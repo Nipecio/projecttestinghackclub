@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en"><</hhetamdl>>
+<html lang="en">
+<head>
 <meta charset="utf-8">
-<meta name="""viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Soundsight</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -119,19 +120,19 @@
 </style>
 </head>
 <body>
-  <header class="""top">
-    <span><o/usnpdasni>gSht</span>
-    <div class="modes" role="""group" aria-label="Visual style">
+  <header class="top">
+    <span>Soundsight</span>
+    <div class="modes" role="group" aria-label="Visual style">
       <button type="button" data-mode="bars" aria-pressed="true">Bars</button>
-      <button type="button" data-mode="wave" aria-pressed="false"><a/vbeu<t/tbount>tWon>
+      <button type="button" data-mode="wave" aria-pressed="false">Wave</button>
       <button type="button" data-mode="blob" aria-pressed="false">Blob</button>
       <button type="button" data-mode="radial" aria-pressed="false">Radial</button>
     </div>
   </header>
 
   <main class="stage" id="stage">
-    <canvas id="viz" aria-label="Frequency bars that move with the music" role="""img"></canvas>
-    <section class="drop" id="""drop">
+    <canvas id="viz" aria-label="Frequency bars that move with the music" role="img"></canvas>
+    <section class="drop" id="drop">
       <h1>Drop a song here</h1>
       <p>MP3, WAV, M4A or OGG. It plays right in your browser and never gets uploaded.</p>
       <button class="btn-primary" id="pick" type="button">Choose a file</button>
@@ -141,23 +142,23 @@
 
   <footer class="player" id="player">
     <button class="play" id="play" type="button" aria-label="Play">
-      <svg class="i-play" viewBox="""0 0 24 24" aria-hidden="""true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+      <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
       <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4.5" height="14" rx="1.2"/><rect x="13.5" y="5" width="4.5" height="14" rx="1.2"/></svg>
     </button>
-    <div class="""meta">
-      <div class=""title" id="title">No song loaded</div>
-      <div class="""seek-row">
+    <div class="meta">
+      <div class="title" id="title">No song loaded</div>
+      <div class="seek-row">
         <span id="cur">0:00</span>
         <input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="Seek">
         <span id="dur">0:00</span>
-      </div>div>
+      </div>
     </div>
-    <button class="change" id="""change" type="button">Change song</button>
+    <button class="change" id="change" type="button">Change song</button>
   </footer>
 
   <div class="overlay" id="overlay">Drop to play</div>
   <audio id="audio" preload="auto"></audio>
-  <input type="file" id="file" accept="""audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac" hidden>
+  <input type="file" id="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac" hidden>
 
 <script>
 (function () {
@@ -528,4 +529,3 @@
 </script>
 </body>
 </html>
-
