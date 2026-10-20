@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Soundsight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #ffffff;
+    --ink: #17171f;
+    --muted: #6a6d7a;
+    --line: #e4e5ea;
+    --soft: #f6f6f9;
+    --accent: #5b4bff;
+    --danger: #c42b4a;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 400 16px/1.5 "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  header { padding: 20px 28px 0; font-weight: 700; font-size: 18px; letter-spacing: -0.01em; }
+
+  .stage { position: relative; flex: 1; min-height: 0; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  .drop {
+    position: absolute; left: 50%; top: 46%;
+    transform: translate(-50%, -50%);
+    width: min(520px, calc(100% - 40px));
+    padding: 44px 32px 36px;
+    text-align: center;
+    background: rgba(255,255,255,0.92);
+    border: 1.5px dashed #c5c7d1;
+    border-radius: 20px;
+    transition: border-color .15s, background .15s;
+  }
+  .drop.is-over { border-color: var(--accent); background: #f4f2ff; }
+  .drop h1 { margin: 0 0 8px; font-size: 30px; line-height: 1.15; letter-spacing: -0.02em; font-weight: 700; }
+  .drop p { margin: 0 auto 24px; max-width: 38ch; color: var(--muted); }
+  .btn-primary {
+    background: var(--ink); color: #fff; border: 0;
+    padding: 12px 22px; border-radius: 999px; font-weight: 600;
+  }
+  .btn-primary:hover { background: #2c2c3a; }
+  .error { margin: 16px 0 0; color: var(--danger); font-size: 14px; min-height: 0; }
+  .error:empty { display: none; }
+  body.has-track .drop { display: none; }
+
+  .player {
+    display: none;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center; gap: 8px 16px;
+    padding: 14px 24px 18px;
+    border-top: 1px solid var(--line);
+    background: var(--bg);
+  }
+  body.has-track .player { display: grid; }
+  .play {
+    width: 46px; height: 46px; border-radius: 50%; border: 0;
+    background: var(--ink); color: #fff; display: grid; place-items: center;
+  }
+  .play:hover { background: #2c2c3a; }
+  .play svg { width: 20px; height: 20px; fill: currentColor; }
+  .play .i-pause { display: none; }
+  .play.is-playing .i-pause { display: block; }
+  .play.is-playing .i-play { display: none; }
+
+  .meta { min-width: 0; }
+  .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .seek-row { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  input[type=range] { flex: 1; min-width: 0; accent-color: var(--accent); height: 20px; margin: 0; }
+
+  .change {
+    background: var(--soft); border: 1px solid var(--line);
+    padding: 9px 16px; border-radius: 999px; font-weight: 500; font-size: 14px;
+  }
+  .change:hover { background: #ececf2; }
+
+  header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .modes { display: flex; gap: 2px; padding: 3px; background: var(--soft); border: 1px solid var(--line); border-radius: 999px; }
+  .modes button { background: none; border: 0; padding: 6px 15px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--muted); }
+  .modes button:hover { color: var(--ink); }
+  .modes button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  @media (max-width: 560px) { .modes button { padding: 6px 11px; font-size: 13px; } }
+
+  .overlay {
+    position: fixed; inset: 0; z-index: 10;
+    display: none; place-items: center;
+    background: rgba(244,242,255,0.88);
+    border: 3px dashed var(--accent);
+    font-size: 28px; font-weight: 700; letter-spacing: -0.02em;
+    pointer-events: none;
+  }
+  .overlay.show { display: grid; }
+
+  @media (max-width: 560px) {
+    header { padding: 16px 20px 0; }
+    .drop { padding: 32px 22px 28px; }
+    .drop h1 { font-size: 25px; }
+    .player { grid-template-columns: auto minmax(0, 1fr); padding: 12px 16px 14px; }
+    .change { grid-column: 1 / -1; justify-self: stretch; }
+  }
+</style>
+</head>
+<body>
+  <header class="top">
+    <span>Soundsight</span>
+    <div class="modes" role="group" aria-label="Visual style">
+      <button type="button" data-mode="bars" aria-pressed="true">Bars</button>
+      <button type="button" data-mode="wave" aria-pressed="false">Wave</button>
+      <button type="button" data-mode="blob" aria-pressed="false">Blob</button>
+      <button type="button" data-mode="radial" aria-pressed="false">Radial</button>
+    </div>
+  </header>
+
+  <main class="stage" id="stage">
+    <canvas id="viz" aria-label="Frequency bars that move with the music" role="img"></canvas>
+    <section class="drop" id="drop">
+      <h1>Drop a song here</h1>
+      <p>MP3, WAV, M4A or OGG. It plays right in your browser and never gets uploaded.</p>
+      <button class="btn-primary" id="pick" type="button">Choose a file</button>
+      <p class="error" id="error" role="alert"></p>
+    </section>
+  </main>
+
+  <footer class="player" id="player">
+    <button class="play" id="play" type="button" aria-label="Play">
+      <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+      <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4.5" height="14" rx="1.2"/><rect x="13.5" y="5" width="4.5" height="14" rx="1.2"/></svg>
+    </button>
+    <div class="meta">
+      <div class="title" id="title">No song loaded</div>
+      <div class="seek-row">
+        <span id="cur">0:00</span>
+        <input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="Seek">
+        <span id="dur">0:00</span>
+      </div>
+    </div>
+    <button class="change" id="change" type="button">Change song</button>
+  </footer>
+
+  <div class="overlay" id="overlay">Drop to play</div>
+  <audio id="audio" preload="auto"></audio>
+  <input type="file" id="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac" hidden>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var audio = $("audio"), fileInput = $("file"), drop = $("drop"), overlay = $("overlay");
+  var playBtn = $("play"), seek = $("seek"), curEl = $("cur"), durEl = $("dur"), titleEl = $("title"), errEl = $("error");
+  var canvas = $("viz"), g = canvas.getContext("2d"), stage = $("stage");
+
+  /* ---------- Audio graph (created on first user gesture) ---------- */
+  var ctx, analyser, bins, edges = [], objectUrl = null;
+
+  function setupAudio() {
+    if (ctx) return;
+    var AC = window.AudioContext || window.webkitAudioContext;
+    ctx = new AC();
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0.7;
+    analyser.minDecibels = -90;
+    analyser.maxDecibels = -20;
+    var source = ctx.createMediaElementSource(audio);
+    source.connect(analyser);
+    analyser.connect(ctx.destination); // so you can still hear it
+    bins = new Uint8Array(analyser.frequencyBinCount);
+    buildEdges();
+  }
+
+  /* ---------- Visual state ---------- */
+  var barCount = 64, levels = [], peaks = [], peakVel = [];
+
+  // Group FFT bins on a log scale so the bass gets room.
+  function buildEdges() {
+    if (!ctx) return;
+    var nyquist = ctx.sampleRate / 2, n = analyser.frequencyBinCount;
+    var fMin = 40, fMax = Math.min(16000, nyquist), e = [];
+    for (var i = 0; i <= barCount; i++) {
+      var f = fMin * Math.pow(fMax / fMin, i / barCount);
+      e.push(Math.max(1, Math.round(f / nyquist * n)));
+    }
+    edges = e;
+  }
+
+  function resetLevels() {
+    levels = []; peaks = []; peakVel = [];
+    for (var i = 0; i < barCount; i++) { levels.push(0); peaks.push(0); peakVel.push(0); }
+  }
+  resetLevels();
+
+  /* ---------- Beat detection + extra visual styles ---------- */
+  var mode = "bars", wave = null, bassVal = 0, bassAvg = 0, beat = 0, lastBeat = 0, rot = 0, rings = [];
+
+  function hsl(t, a) {
+    return "hsl(" + ((250 + t * 125) % 360) + " 85% 58%" + (a == null ? "" : " / " + a) + ")";
+  }
+
+  // A kick is when the low end jumps above its own running average.
+  function detectBeat(now) {
+    var n = Math.max(4, Math.round(barCount * 0.2)), s = 0;
+    for (var i = 0; i < n; i++) s += levels[i];
+    var bass = s / n;
+    bassAvg += (bass - bassAvg) * 0.04;
+    beat *= 0.9;
+    if (bass > bassAvg * 1.35 && bass > 0.3 && now - lastBeat > 180) {
+      lastBeat = now; beat = 1; rings.push({ r: 0, a: 0.5 });
+    }
+    return bass;
+  }
+
+  function drawRings(cx, cy, r0) {
+    for (var i = rings.length - 1; i >= 0; i--) {
+      var rg = rings[i];
+      rg.r += 5; rg.a *= 0.96;
+      if (rg.a < 0.02) { rings.splice(i, 1); continue; }
+      g.lineWidth = 2;
+      g.strokeStyle = hsl((rg.r / 500) % 1, rg.a);
+      g.beginPath(); g.arc(cx, cy, r0 + rg.r, 0, Math.PI * 2); g.stroke();
+    }
+  }
+
+  var waveSm = new Float32Array(160), waveYs = new Float32Array(160), wavePeak = 0.3;
+  var rpk = new Float32Array(64), nrm = new Float32Array(64);
+
+  // Give every band its own loudness scale so each one uses its full range.
+  // Loud bass can't max out and flatten everything, and quiet bands still move.
+  function normBands() {
+    for (var i = 0; i < barCount; i++) {
+      rpk[i] = Math.max(rpk[i] * 0.995, levels[i], 0.12);
+      nrm[i] = Math.min(1, levels[i] / rpk[i]);
+    }
+  }
+  var lobes = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], spin = 0, pump = 0;
+
+  // Smooth wave: average the raw samples down to 160 points, ease them over time,
+  // auto-scale to the loudness, fade the ends to a flat line, and draw with curves.
+  function drawWave(w, h) {
+    var n = 160, mid = h / 2 - 10, amp = h * 0.3 * (1 + beat * 0.2), p, q;
+    var seg = 0;
+    if (ctx) {
+      if (!wave || wave.length !== analyser.fftSize) wave = new Uint8Array(analyser.fftSize);
+      analyser.getByteTimeDomainData(wave);
+      seg = Math.floor(wave.length / n);
+    }
+    var pk = 0;
+    for (p = 0; p < n; p++) {
+      var v = 0;
+      if (seg) { var s = 0; for (q = 0; q < seg; q++) s += wave[p * seg + q] - 128; v = s / seg / 128; }
+      waveSm[p] += (v - waveSm[p]) * 0.3;
+      pk = Math.max(pk, Math.abs(waveSm[p]));
+    }
+    wavePeak += (pk - wavePeak) * (pk > wavePeak ? 0.2 : 0.02);
+    var gain = 1 / Math.max(0.15, wavePeak);
+    for (p = 0; p < n; p++) {
+      var win = Math.pow(Math.sin(Math.PI * p / (n - 1)), 0.7);
+      waveYs[p] = mid + Math.max(-1, Math.min(1, waveSm[p] * gain)) * amp * win;
+    }
+    var grad = g.createLinearGradient(0, 0, w, 0);
+    grad.addColorStop(0, hsl(0)); grad.addColorStop(0.5, hsl(0.5)); grad.addColorStop(1, hsl(1));
+    g.lineJoin = "round"; g.lineCap = "round"; g.strokeStyle = grad;
+    for (var pass = 0; pass < 2; pass++) {
+      g.globalAlpha = pass ? 1 : 0.14;
+      g.lineWidth = pass ? 3 + beat * 2 : 12;
+      g.beginPath();
+      g.moveTo(0, waveYs[0]);
+      for (p = 1; p < n - 1; p++) {
+        var x1 = p / (n - 1) * w, x2 = (p + 1) / (n - 1) * w;
+        g.quadraticCurveTo(x1, waveYs[p], (x1 + x2) / 2, (waveYs[p] + waveYs[p + 1]) / 2);
+      }
+      g.lineTo(w, waveYs[n - 1]);
+      g.stroke();
+    }
+    g.globalAlpha = 1;
+  }
+
+  // Blob: 12 control points joined by smooth curves. It swells and punches on every
+  // beat, spins faster when the music is busy, and each lobe stretches out with its
+  // own slice of the spectrum.
+  function drawBlob(w, h, now) {
+    var cx = w / 2, cy = h / 2 - 10, N = 12, G = 6, i, j, e = 0;
+    var per = Math.floor(barCount * 0.8 / G);
+    for (i = 0; i < barCount; i++) e += nrm[i];
+    e /= barCount;
+    spin += 0.003 + e * 0.025 + beat * 0.03;
+    pump += (Math.max(e, beat * 0.9) - pump) * 0.3;
+    var R = Math.min(w, h) * 0.16 * (1 + pump * 0.7);
+    for (i = 0; i < N; i++) {
+      var gi = i < G ? i : N - 1 - i, s = 0;
+      for (j = 0; j < per; j++) s += nrm[gi * per + j];
+      var tg = Math.min(1, s / per * 1.4);
+      lobes[i] += (tg - lobes[i]) * (tg > lobes[i] ? 0.4 : 0.12);
+    }
+    drawRings(cx, cy, R);
+    var P = [];
+    for (i = 0; i < N; i++) {
+      var a = i / N * Math.PI * 2 + spin;
+      var r = R * (1 + lobes[i] * 1.0 + Math.sin(now / 600 + i * 1.9) * 0.07 + Math.sin(now / 950 - i * 2.7) * 0.05);
+      P.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+    }
+    function trace() {
+      g.beginPath();
+      g.moveTo(P[0][0], P[0][1]);
+      for (var k = 0; k < N; k++) {
+        var p0 = P[(k + N - 1) % N], p1 = P[k], p2 = P[(k + 1) % N], p3 = P[(k + 2) % N];
+        g.bezierCurveTo(p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6,
+                        p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6, p2[0], p2[1]);
+      }
+      g.closePath();
+    }
+    var grad = g.createRadialGradient(cx - R * 0.3, cy - R * 0.35, R * 0.1, cx, cy, R * 1.35);
+    grad.addColorStop(0, hsl(1)); grad.addColorStop(0.5, hsl(0.55)); grad.addColorStop(1, hsl(0.05));
+    g.shadowColor = hsl(0.5, 0.35); g.shadowBlur = 40;
+    g.fillStyle = grad; trace(); g.fill();
+    g.shadowBlur = 0;
+  }
+
+  // Balanced ring: bar lengths follow the music, but the pattern repeats in all four
+  // quarters, so it never leans to one side. Bass makes four matching spikes.
+  function drawRadial(w, h) {
+    var cx = w / 2, cy = h / 2 - 10, s = Math.min(w, h), n = barCount, total = n * 1.5;
+    var inner = s * 0.17 * (1 + beat * 0.06), maxL = s * 0.3, i;
+    rot += 0.003 + beat * 0.01;
+    drawRings(cx, cy, inner);
+    g.lineCap = "round"; g.lineWidth = Math.max(3, Math.PI * 2 * inner / total * 0.62);
+    for (i = 0; i < total; i++) {
+      var t = Math.abs((i / total * 4) % 2 - 1);               // 0 to 1 and back, four times
+      var idx = Math.min(n - 1, Math.floor(t * n));
+      var a = i / total * Math.PI * 2 + rot - Math.PI / 2;
+      var c = Math.cos(a), sn = Math.sin(a);
+      var len = s * 0.025 + Math.pow(nrm[idx], 1.6) * maxL * (1 + beat * 0.1);
+      g.strokeStyle = hsl(idx / (n - 1));
+      g.beginPath();
+      g.moveTo(cx + c * inner, cy + sn * inner);
+      g.lineTo(cx + c * (inner + len), cy + sn * (inner + len));
+      g.stroke();
+    }
+  }
+
+  var drawers = { wave: drawWave, blob: drawBlob, radial: drawRadial };
+  var tabs = document.querySelectorAll(".modes button");
+  function setMode(m) {
+    mode = m; rings = [];
+    for (var i = 0; i < tabs.length; i++) tabs[i].setAttribute("aria-pressed", tabs[i].getAttribute("data-mode") === m ? "true" : "false");
+  }
+  for (var t = 0; t < tabs.length; t++) tabs[t].addEventListener("click", function () { setMode(this.getAttribute("data-mode")); });
+  document.addEventListener("keydown", function (e) {
+    var i = "1234".indexOf(e.key);
+    if (i !== -1 && e.target === document.body) setMode(tabs[i].getAttribute("data-mode"));
+  });
+
+  function resize() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = stage.clientWidth, h = stage.clientHeight;
+    canvas.width = Math.max(1, Math.round(w * dpr));
+    canvas.height = Math.max(1, Math.round(h * dpr));
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var want = w < 520 ? 32 : 64;
+    if (want !== barCount) { barCount = want; resetLevels(); buildEdges(); }
+  }
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
+  window.addEventListener("resize", resize);
+  resize();
+
+  function barPath(x, y, w, h, r) {
+    g.beginPath();
+    if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h);
+    g.fill();
+  }
+
+  function frame(now) {
+    var w = stage.clientWidth, h = stage.clientHeight;
+    g.clearRect(0, 0, w, h);
+
+    // Read targets from the analyser (or zeros when nothing is loaded)
+    var live = ctx && edges.length && !audio.paused;
+    if (ctx && edges.length) analyser.getByteFrequencyData(bins);
+
+    for (var i = 0; i < barCount; i++) {
+      var target = 0;
+      if (live || (ctx && edges.length)) {
+        var lo = edges[i], hi = Math.max(lo + 1, edges[i + 1]), sum = 0;
+        for (var b = lo; b < hi; b++) sum += bins[b];
+        var avg = sum / (hi - lo) / 255;
+        var tilt = 1 + (i / barCount) * 0.45;      // highs are quieter, give them a lift
+        target = Math.pow(Math.min(1, avg * tilt), 1.6);
+      }
+      // Fast up, slow down
+      var k = target > levels[i] ? 0.55 : 0.12;
+      levels[i] += (target - levels[i]) * k;
+
+      // Falling peak caps
+      if (levels[i] >= peaks[i]) { peaks[i] = levels[i]; peakVel[i] = 0; }
+      else { peakVel[i] += 0.0007; peaks[i] = Math.max(levels[i], peaks[i] - peakVel[i]); }
+    }
+
+    now = now || 0;
+    bassVal = detectBeat(now);
+    if (mode !== "bars") { normBands(); drawers[mode](w, h, now); requestAnimationFrame(frame); return; }
+
+    var padX = Math.max(20, w * 0.04);
+    var baseY = h - 28;
+    var maxH = Math.max(40, h * 0.72);
+    var gap = Math.max(2, w * 0.004);
+    var bw = (w - padX * 2 - gap * (barCount - 1)) / barCount;
+
+    for (var j = 0; j < barCount; j++) {
+      var t = j / (barCount - 1);
+      var hue = (250 + t * 125) % 360;           // indigo, through magenta, to coral
+      var bh = Math.max(4, levels[j] * maxH);
+      var x = padX + j * (bw + gap);
+      g.fillStyle = "hsl(" + hue + " 85% 58%)";
+      barPath(x, baseY - bh, bw, bh, Math.min(bw / 2, 6));
+      g.fillStyle = "hsl(" + hue + " 85% 58% / 0.35)";
+      barPath(x, baseY - peaks[j] * maxH - 8, bw, 3, 1.5);
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  /* ---------- Loading a song ---------- */
+  var AUDIO_EXT = /\.(mp3|wav|m4a|ogg|oga|flac|aac|opus|weba)$/i;
+
+  function showError(msg) { errEl.textContent = msg; }
+
+  function loadFile(file) {
+    if (!file) return;
+    if (!(file.type && file.type.indexOf("audio/") === 0) && !AUDIO_EXT.test(file.name)) {
+      showError("That doesn’t look like an audio file. Try an MP3, WAV, M4A or OGG.");
+      return;
+    }
+    showError("");
+    setupAudio();
+    if (ctx.state === "suspended") ctx.resume();
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    objectUrl = URL.createObjectURL(file);
+    audio.src = objectUrl;
+    titleEl.textContent = file.name.replace(/\.[^.]+$/, "");
+    document.body.classList.add("has-track");
+    audio.play().catch(function () {});
+  }
+
+  audio.addEventListener("error", function () {
+    document.body.classList.remove("has-track");
+    showError("Couldn’t play that file. Try an MP3, WAV, M4A or OGG.");
+  });
+
+  /* ---------- Controls ---------- */
+  function fmt(s) {
+    if (!isFinite(s)) return "0:00";
+    var m = Math.floor(s / 60), r = Math.floor(s % 60);
+    return m + ":" + (r < 10 ? "0" : "") + r;
+  }
+  var seeking = false;
+
+  function togglePlay() {
+    if (!audio.src) return;
+    if (ctx && ctx.state === "suspended") ctx.resume();
+    if (audio.paused) audio.play().catch(function () {}); else audio.pause();
+  }
+  playBtn.addEventListener("click", togglePlay);
+  audio.addEventListener("play", function () { playBtn.classList.add("is-playing"); playBtn.setAttribute("aria-label", "Pause"); });
+  audio.addEventListener("pause", function () { playBtn.classList.remove("is-playing"); playBtn.setAttribute("aria-label", "Play"); });
+  audio.addEventListener("loadedmetadata", function () { durEl.textContent = fmt(audio.duration); });
+  audio.addEventListener("timeupdate", function () {
+    curEl.textContent = fmt(audio.currentTime);
+    if (!seeking && audio.duration) seek.value = Math.round(audio.currentTime / audio.duration * 1000);
+  });
+  seek.addEventListener("input", function () {
+    seeking = true;
+    if (audio.duration) {
+      audio.currentTime = seek.value / 1000 * audio.duration;
+      curEl.textContent = fmt(audio.currentTime);
+    }
+  });
+  seek.addEventListener("change", function () { seeking = false; });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.code === "Space" && (e.target === document.body)) { e.preventDefault(); togglePlay(); }
+  });
+
+  /* ---------- File picking and drag-and-drop ---------- */
+  function openPicker() { fileInput.click(); }
+  $("pick").addEventListener("click", openPicker);
+  $("change").addEventListener("click", openPicker);
+  fileInput.addEventListener("change", function () {
+    loadFile(fileInput.files[0]);
+    fileInput.value = "";
+  });
+
+  var depth = 0;
+  function hasFiles(e) { return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], "Files") !== -1; }
+  window.addEventListener("dragenter", function (e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault(); depth++;
+    overlay.classList.add("show"); drop.classList.add("is-over");
+  });
+  window.addEventListener("dragover", function (e) { if (hasFiles(e)) e.preventDefault(); });
+  window.addEventListener("dragleave", function (e) {
+    if (!hasFiles(e)) return;
+    depth = Math.max(0, depth - 1);
+    if (!depth) { overlay.classList.remove("show"); drop.classList.remove("is-over"); }
+  });
+  window.addEventListener("drop", function (e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault(); depth = 0;
+    overlay.classList.remove("show"); drop.classList.remove("is-over");
+    loadFile(e.dataTransfer.files[0]);
+  });
+})();
+</script>
+</body>
+</html>
