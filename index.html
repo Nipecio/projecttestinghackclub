@@ -4,19 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Soundsight</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 16s4.4-8 12-8 12 8 12 8-4.4 8-12 8S4 16 4 16Z' fill='none' stroke='%231c1d2b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='%231c1d2b'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     color-scheme: light;
-    --bg: #ffffff;
-    --ink: #17171f;
-    --muted: #6a6d7a;
-    --line: #e4e5ea;
-    --soft: #f6f6f9;
-    --accent: #5b4bff;
+    --bg: #f3f4fb;
+    --ink: #1c1d2b;
+    --muted: #686b7d;
+    --line: rgba(43, 45, 76, 0.15);
+    --soft: rgba(43, 45, 76, 0.07);
+    --accent: #5d49db;
     --danger: #c42b4a;
+    --panel: rgba(255, 255, 255, 0.84);
+    --glow-a: rgba(128, 103, 255, 0.14);
+    --glow-b: rgba(69, 195, 192, 0.11);
     box-sizing: border-box;
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -25,7 +29,8 @@
   *, *::before, *::after { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body {
-    background: var(--bg);
+    background: radial-gradient(ellipse at 18% 18%, var(--glow-a), transparent 48%),
+                radial-gradient(ellipse at 82% 75%, var(--glow-b), transparent 46%), var(--bg);
     color: var(--ink);
     font: 400 16px/1.5 "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     display: flex;
@@ -36,8 +41,17 @@
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
   header { padding: 20px 28px 0; font-weight: 700; font-size: 18px; letter-spacing: -0.01em; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark { width: 28px; height: 28px; display: grid; place-items: center; color: #1c1d2b; }
+  .brand-mark svg { width: 19px; height: 19px; }
 
   .stage { position: relative; flex: 1; min-height: 0; }
+  .stage::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .16;
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse at center, #000 8%, transparent 76%);
+  }
   canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
   .drop {
@@ -46,19 +60,21 @@
     width: min(520px, calc(100% - 40px));
     padding: 44px 32px 36px;
     text-align: center;
-    background: rgba(255,255,255,0.92);
-    border: 1.5px dashed #c5c7d1;
+    background: var(--panel);
+    border: 1.5px dashed var(--line);
     border-radius: 20px;
-    transition: border-color .15s, background .15s;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, .2);
+    backdrop-filter: blur(18px);
+    transition: border-color .15s, background .15s, transform .2s;
   }
-  .drop.is-over { border-color: var(--accent); background: #f4f2ff; }
+  .drop.is-over { border-color: var(--accent); background: var(--soft); transform: translate(-50%, -50%) scale(1.02); }
   .drop h1 { margin: 0 0 8px; font-size: 30px; line-height: 1.15; letter-spacing: -0.02em; font-weight: 700; }
   .drop p { margin: 0 auto 24px; max-width: 38ch; color: var(--muted); }
   .btn-primary {
-    background: var(--ink); color: #fff; border: 0;
+    background: var(--accent); color: #fff; border: 0;
     padding: 12px 22px; border-radius: 999px; font-weight: 600;
   }
-  .btn-primary:hover { background: #2c2c3a; }
+  .btn-primary:hover { filter: brightness(1.12); }
   .error { margin: 16px 0 0; color: var(--danger); font-size: 14px; min-height: 0; }
   .error:empty { display: none; }
   body.has-track .drop { display: none; }
@@ -69,14 +85,15 @@
     align-items: center; gap: 8px 16px;
     padding: 14px 24px 18px;
     border-top: 1px solid var(--line);
-    background: var(--bg);
+    background: var(--panel);
+    backdrop-filter: blur(18px);
   }
   body.has-track .player { display: grid; }
   .play {
     width: 46px; height: 46px; border-radius: 50%; border: 0;
-    background: var(--ink); color: #fff; display: grid; place-items: center;
+    background: var(--accent); color: #fff; display: grid; place-items: center;
   }
-  .play:hover { background: #2c2c3a; }
+  .play:hover { filter: brightness(1.12); }
   .play svg { width: 20px; height: 20px; fill: currentColor; }
   .play .i-pause { display: none; }
   .play.is-playing .i-pause { display: block; }
@@ -91,19 +108,19 @@
     background: var(--soft); border: 1px solid var(--line);
     padding: 9px 16px; border-radius: 999px; font-weight: 500; font-size: 14px;
   }
-  .change:hover { background: #ececf2; }
+  .change:hover { background: var(--soft); }
 
   header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .modes { display: flex; gap: 2px; padding: 3px; background: var(--soft); border: 1px solid var(--line); border-radius: 999px; }
   .modes button { background: none; border: 0; padding: 6px 15px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--muted); }
   .modes button:hover { color: var(--ink); }
-  .modes button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .modes button[aria-pressed="true"] { background: var(--accent); color: #fff; }
   @media (max-width: 560px) { .modes button { padding: 6px 11px; font-size: 13px; } }
 
   .overlay {
     position: fixed; inset: 0; z-index: 10;
     display: none; place-items: center;
-    background: rgba(244,242,255,0.88);
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
     border: 3px dashed var(--accent);
     font-size: 28px; font-weight: 700; letter-spacing: -0.02em;
     pointer-events: none;
@@ -120,21 +137,27 @@
   .tools { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
   .tools .grow { flex: 1; }
   .tool { background: var(--soft); border: 1px solid var(--line); padding: 6px 13px; border-radius: 999px; font-weight: 500; font-size: 13px; }
-  .tool:hover { background: #ececf2; }
-  .tool[aria-pressed="true"], .tool[aria-expanded="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .tool:hover { background: var(--soft); }
+  .tool[aria-pressed="true"], .tool[aria-expanded="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
   .vol { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
   .vol input { width: 90px; flex: none; }
-  .queue { position: absolute; right: 16px; bottom: 12px; z-index: 5; width: min(320px, calc(100% - 32px)); max-height: 60%; overflow: auto; background: rgba(255,255,255,0.96); border: 1px solid var(--line); border-radius: 16px; padding: 8px; }
+  .queue { position: absolute; right: 16px; bottom: 12px; z-index: 5; width: min(320px, calc(100% - 32px)); max-height: 60%; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 8px; backdrop-filter: blur(18px); }
   .queue[hidden] { display: none; }
   .queue ol { list-style: none; margin: 0 0 6px; padding: 0; }
   .queue li button { width: 100%; text-align: left; background: none; border: 0; padding: 8px 10px; border-radius: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .queue li button:hover { background: var(--soft); }
-  .queue li[aria-current] button { background: #f4f2ff; color: var(--accent); font-weight: 600; }
+  .queue li[aria-current] button { background: var(--soft); color: var(--accent); font-weight: 600; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+  }
 </style>
 </head>
 <body>
   <header class="top">
-    <span>Soundsight</span>
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 16s4-7 11-7 11 7 11 7-4 7-11 7S5 16 5 16Z" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="16" r="3.3" fill="#9ff4dc"/></svg></span>
+      <span>Soundsight</span>
+    </div>
     <div class="modes" role="group" aria-label="Visual style">
       <button type="button" data-mode="bars" aria-pressed="true">Bars</button>
       <button type="button" data-mode="wave" aria-pressed="false">Wave</button>
@@ -147,7 +170,7 @@
     <canvas id="viz" aria-label="Frequency bars that move with the music" role="img"></canvas>
     <section class="drop" id="drop">
       <h1>Drop songs here</h1>
-      <p>MP3, WAV, M4A or OGG. It plays right in your browser and never gets uploaded.</p>
+      <p>Turn your favorite tracks into living color. Your audio stays right here in your browser.</p>
       <button class="btn-primary" id="pick" type="button">Choose a file</button>
       <p class="error" id="error" role="alert"></p>
     </section>
@@ -179,7 +202,8 @@
       <button class="tool" id="spd" type="button" aria-label="Playback speed">1×</button>
       <label class="vol">Vol <input type="range" id="vol" min="0" max="100" value="100" aria-label="Volume"></label>
       <span class="grow"></span>
-      <button class="tool" id="theme" type="button" aria-label="Color theme">Aurora</button>
+      <button class="tool" id="theme" type="button" aria-label="Color theme">Daylight</button>
+      <button class="tool" id="glow" type="button" aria-pressed="true">Glow</button>
       <button class="tool" id="fs" type="button">Fullscreen</button>
       <button class="tool" id="qbtn" type="button" aria-expanded="false">Queue (0)</button>
     </div>
@@ -237,10 +261,16 @@
   resetLevels();
 
   /* ---------- Beat detection + extra visual styles ---------- */
-  var mode = "bars", wave = null, bassVal = 0, bassAvg = 0, beat = 0, lastBeat = 0, rot = 0, rings = [];
+  var mode = "bars", wave = null, bassVal = 0, bassAvg = 0, beat = 0, lastBeat = 0, rot = 0, rings = [], glowOn = true;
 
-  var themes = [["Aurora", 250, 125], ["Ocean", 150, 100], ["Sunset", 340, 80], ["Ember", 0, 55]], themeIdx = 0;
-  function hueOf(t) { var th = themes[themeIdx]; return (th[1] + t * th[2] + 360) % 360; }
+  var themes = [
+    { name: "Aurora", hue: 250, span: 125, scheme: "dark", bg: "#090b18", ink: "#f3f2ff", muted: "#a5a6bf", line: "rgba(192,190,255,.16)", soft: "rgba(192,190,255,.09)", accent: "#8c7bff", panel: "rgba(17,19,39,.78)", glowA: "rgba(110,76,255,.18)", glowB: "rgba(47,215,204,.1)" },
+    { name: "Ocean", hue: 175, span: 105, scheme: "dark", bg: "#07131c", ink: "#e8faff", muted: "#9cb9c5", line: "rgba(122,216,230,.17)", soft: "rgba(122,216,230,.09)", accent: "#22bec9", panel: "rgba(10,32,43,.8)", glowA: "rgba(0,171,205,.2)", glowB: "rgba(43,110,255,.13)" },
+    { name: "Sunset", hue: 325, span: 90, scheme: "dark", bg: "#170d1c", ink: "#fff0f3", muted: "#c2a6b5", line: "rgba(255,168,198,.17)", soft: "rgba(255,168,198,.09)", accent: "#f06caa", panel: "rgba(42,19,38,.8)", glowA: "rgba(229,69,139,.2)", glowB: "rgba(255,143,81,.12)" },
+    { name: "Ember", hue: 8, span: 65, scheme: "dark", bg: "#180e0a", ink: "#fff4e9", muted: "#c4aa96", line: "rgba(255,181,128,.18)", soft: "rgba(255,181,128,.09)", accent: "#ff8b45", panel: "rgba(43,24,15,.82)", glowA: "rgba(255,94,46,.19)", glowB: "rgba(255,187,69,.1)" },
+    { name: "Daylight", hue: 245, span: 120, scheme: "light", bg: "#f3f4fb", ink: "#1c1d2b", muted: "#686b7d", line: "rgba(43,45,76,.15)", soft: "rgba(43,45,76,.07)", accent: "#5d49db", panel: "rgba(255,255,255,.84)", glowA: "rgba(128,103,255,.14)", glowB: "rgba(69,195,192,.11)" }
+  ], themeIdx = 0;
+  function hueOf(t) { var th = themes[themeIdx]; return (th.hue + t * th.span + 360) % 360; }
   function hsl(t, a) {
     return "hsl(" + hueOf(t) + " 85% 58%" + (a == null ? "" : " / " + a) + ")";
   }
@@ -269,7 +299,7 @@
     }
   }
 
-  var waveSm = new Float32Array(160), waveYs = new Float32Array(160), wavePeak = 0.3;
+  var waveSm = new Float32Array(128), waveYs = new Float32Array(128);
   var rpk = new Float32Array(64), nrm = new Float32Array(64);
 
   // Give every band its own loudness scale so each one uses its full range.
@@ -282,32 +312,38 @@
   }
   var lobes = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], spin = 0, pump = 0;
 
-  // Smooth wave: average the raw samples down to 160 points, ease them over time,
-  // auto-scale to the loudness, fade the ends to a flat line, and draw with curves.
+  // Average nearby samples and use fixed gain to avoid aliasing and runaway auto-normalization.
   function drawWave(w, h) {
-    var n = 160, mid = h / 2 - 10, amp = h * 0.3 * (1 + beat * 0.2), p, q;
-    var seg = 0;
+    var n = waveSm.length, mid = h / 2 - 10, amp = h * 0.24 * (1 + beat * 0.08), p;
     if (ctx) {
       if (!wave || wave.length !== analyser.fftSize) wave = new Uint8Array(analyser.fftSize);
       analyser.getByteTimeDomainData(wave);
-      seg = Math.floor(wave.length / n);
     }
-    var pk = 0;
     for (p = 0; p < n; p++) {
-      var v = 0;
-      if (seg) { var s = 0; for (q = 0; q < seg; q++) s += wave[p * seg + q] - 128; v = s / seg / 128; }
-      waveSm[p] += (v - waveSm[p]) * 0.3;
-      pk = Math.max(pk, Math.abs(waveSm[p]));
+      var start = ctx ? Math.floor(p / n * wave.length) : 0;
+      var end = ctx ? Math.max(start + 1, Math.floor((p + 1) / n * wave.length)) : 0;
+      var sum = 0;
+      for (var q = start; q < end; q++) sum += wave[q] - 128;
+      var v = ctx ? sum / (end - start) / 128 : 0;
+      waveSm[p] += (v - waveSm[p]) * 0.2;
     }
-    wavePeak += (pk - wavePeak) * (pk > wavePeak ? 0.2 : 0.02);
-    var gain = 1 / Math.max(0.15, wavePeak);
     for (p = 0; p < n; p++) {
-      var win = Math.pow(Math.sin(Math.PI * p / (n - 1)), 0.7);
-      waveYs[p] = mid + Math.max(-1, Math.min(1, waveSm[p] * gain)) * amp * win;
+      var edge = Math.min(1, p / 8, (n - 1 - p) / 8);
+      waveYs[p] = mid + Math.max(-0.8, Math.min(0.8, waveSm[p] * 1.8)) * amp * edge;
     }
     var grad = g.createLinearGradient(0, 0, w, 0);
     grad.addColorStop(0, hsl(0)); grad.addColorStop(0.5, hsl(0.5)); grad.addColorStop(1, hsl(1));
+    var fill = g.createLinearGradient(0, mid - amp, 0, mid + amp);
+    fill.addColorStop(0, hsl(0, 0.02)); fill.addColorStop(0.5, hsl(0.5, 0.2)); fill.addColorStop(1, hsl(1, 0.02));
+    g.beginPath(); g.moveTo(0, mid); g.lineTo(0, waveYs[0]);
+    for (p = 1; p < n - 1; p++) {
+      var fx1 = p / (n - 1) * w, fx2 = (p + 1) / (n - 1) * w;
+      g.quadraticCurveTo(fx1, waveYs[p], (fx1 + fx2) / 2, (waveYs[p] + waveYs[p + 1]) / 2);
+    }
+    g.lineTo(w, waveYs[n - 1]); g.lineTo(w, mid); g.closePath();
+    g.fillStyle = fill; g.fill();
     g.lineJoin = "round"; g.lineCap = "round"; g.strokeStyle = grad;
+    g.shadowColor = hsl(0.5, 0.7); g.shadowBlur = glowOn ? 22 : 0;
     for (var pass = 0; pass < 2; pass++) {
       g.globalAlpha = pass ? 1 : 0.14;
       g.lineWidth = pass ? 3 + beat * 2 : 12;
@@ -320,7 +356,7 @@
       g.lineTo(w, waveYs[n - 1]);
       g.stroke();
     }
-    g.globalAlpha = 1;
+    g.globalAlpha = 1; g.shadowBlur = 0;
   }
 
   // Blob: 12 control points joined by smooth curves. It swells and punches on every
@@ -359,7 +395,7 @@
     }
     var grad = g.createRadialGradient(cx - R * 0.3, cy - R * 0.35, R * 0.1, cx, cy, R * 1.35);
     grad.addColorStop(0, hsl(1)); grad.addColorStop(0.5, hsl(0.55)); grad.addColorStop(1, hsl(0.05));
-    g.shadowColor = hsl(0.5, 0.35); g.shadowBlur = 40;
+    g.shadowColor = hsl(0.5, 0.35); g.shadowBlur = glowOn ? 40 : 0;
     g.fillStyle = grad; trace(); g.fill();
     g.shadowBlur = 0;
   }
@@ -372,6 +408,7 @@
     rot += 0.003 + beat * 0.01;
     drawRings(cx, cy, inner);
     g.lineCap = "round"; g.lineWidth = Math.max(3, Math.PI * 2 * inner / total * 0.62);
+    g.shadowColor = hsl(0.5, 0.55); g.shadowBlur = glowOn ? 14 : 0;
     for (i = 0; i < total; i++) {
       var t = Math.abs((i / total * 4) % 2 - 1);               // 0 to 1 and back, four times
       var idx = Math.min(n - 1, Math.floor(t * n));
@@ -384,12 +421,19 @@
       g.lineTo(cx + c * (inner + len), cy + sn * (inner + len));
       g.stroke();
     }
+    g.shadowBlur = 0;
   }
 
   var drawers = { wave: drawWave, blob: drawBlob, radial: drawRadial };
   var tabs = document.querySelectorAll(".modes button");
   function setMode(m) {
     mode = m; rings = []; store("mode", m);
+    canvas.setAttribute("aria-label", {
+      bars: "Frequency bars that move with the music",
+      wave: "Audio waveform that moves with the music",
+      blob: "Audio-reactive blob that moves with the music",
+      radial: "Circular frequency bars that move with the music"
+    }[m]);
     for (var i = 0; i < tabs.length; i++) tabs[i].setAttribute("aria-pressed", tabs[i].getAttribute("data-mode") === m ? "true" : "false");
   }
   for (var t = 0; t < tabs.length; t++) tabs[t].addEventListener("click", function () { setMode(this.getAttribute("data-mode")); });
@@ -452,6 +496,7 @@
     var maxH = Math.max(40, h * 0.72);
     var gap = Math.max(2, w * 0.004);
     var bw = (w - padX * 2 - gap * (barCount - 1)) / barCount;
+    g.shadowColor = hsl(0.5, 0.55); g.shadowBlur = glowOn ? 14 : 0;
 
     for (var j = 0; j < barCount; j++) {
       var t = j / (barCount - 1);
@@ -463,6 +508,7 @@
       g.fillStyle = "hsl(" + hue + " 85% 58% / 0.35)";
       barPath(x, baseY - peaks[j] * maxH - 8, bw, 3, 1.5);
     }
+    g.shadowBlur = 0;
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -589,11 +635,30 @@
 
   var themeBtn = $("theme");
   function setTheme(i) {
-    themeIdx = i; themeBtn.textContent = themes[i][0];
-    document.documentElement.style.setProperty("--accent", "hsl(" + hueOf(0.3) + " 85% 58%)");
-    store("theme", i);
+    themeIdx = i;
+    var theme = themes[i], root = document.documentElement;
+    themeBtn.textContent = theme.name;
+    root.style.colorScheme = theme.scheme;
+    root.style.setProperty("--bg", theme.bg);
+    root.style.setProperty("--ink", theme.ink);
+    root.style.setProperty("--muted", theme.muted);
+    root.style.setProperty("--line", theme.line);
+    root.style.setProperty("--soft", theme.soft);
+    root.style.setProperty("--accent", theme.accent);
+    root.style.setProperty("--panel", theme.panel);
+    root.style.setProperty("--glow-a", theme.glowA);
+    root.style.setProperty("--glow-b", theme.glowB);
+    store("theme-v2", i);
   }
   themeBtn.addEventListener("click", function () { setTheme((themeIdx + 1) % themes.length); });
+
+  var glowBtn = $("glow");
+  function setGlow(enabled) {
+    glowOn = enabled;
+    glowBtn.setAttribute("aria-pressed", String(glowOn));
+    store("glow", glowOn ? "1" : "0");
+  }
+  glowBtn.addEventListener("click", function () { setGlow(!glowOn); });
 
   var fsBtn = $("fs");
   function toggleFs() {
@@ -628,7 +693,8 @@
 
   // Restore saved preferences
   var sv = parseFloat(recall("vol")); if (isFinite(sv)) setVol(Math.max(0, Math.min(1, sv)));
-  var st = parseInt(recall("theme"), 10); setTheme(st >= 0 && st < themes.length ? st : 0);
+  var st = parseInt(recall("theme-v2"), 10); setTheme(st >= 0 && st < themes.length ? st : 4);
+  setGlow(recall("glow") !== "0");
   var sm = recall("mode"); if (sm && (sm === "bars" || drawers[sm])) setMode(sm);
 
   /* ---------- File picking and drag-and-drop ---------- */

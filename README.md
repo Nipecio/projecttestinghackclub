@@ -9,6 +9,7 @@ Open index.html in your browser (or use the Live Server extension in VS Code)
 Drag a song onto the page, or hit Choose a file
 Pick a style up top, or press 1, 2, 3, 4
 Press space to pause
+Cycle through the color themes and toggle the glow from the player controls
 
 Your song never gets uploaded anywhere. It just plays in your browser.
 
@@ -17,6 +18,8 @@ Bars: frequency bars with little peak caps that float back down
 Wave: a smooth line that wiggles with the sound
 Blob: a soft shape that swells with the bass and sticks out in different directions
 Radial: bars in a circle, mirrored so it looks even on every side
+
+The player also includes five full-page color themes and a glow toggle to tune the look.
 
 How it works (the short version)
 
@@ -30,5 +33,4 @@ Just plain HTML, CSS, and JavaScript in one file. No libraries, no server.
 
 Things I might add:
 Particles that burst on the beat
-Color themes
 Microphone input
