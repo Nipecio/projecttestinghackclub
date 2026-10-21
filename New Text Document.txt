@@ -117,6 +117,19 @@
     .player { grid-template-columns: auto minmax(0, 1fr); padding: 12px 16px 14px; }
     .change { grid-column: 1 / -1; justify-self: stretch; }
   }
+  .tools { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .tools .grow { flex: 1; }
+  .tool { background: var(--soft); border: 1px solid var(--line); padding: 6px 13px; border-radius: 999px; font-weight: 500; font-size: 13px; }
+  .tool:hover { background: #ececf2; }
+  .tool[aria-pressed="true"], .tool[aria-expanded="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .vol { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .vol input { width: 90px; flex: none; }
+  .queue { position: absolute; right: 16px; bottom: 12px; z-index: 5; width: min(320px, calc(100% - 32px)); max-height: 60%; overflow: auto; background: rgba(255,255,255,0.96); border: 1px solid var(--line); border-radius: 16px; padding: 8px; }
+  .queue[hidden] { display: none; }
+  .queue ol { list-style: none; margin: 0 0 6px; padding: 0; }
+  .queue li button { width: 100%; text-align: left; background: none; border: 0; padding: 8px 10px; border-radius: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .queue li button:hover { background: var(--soft); }
+  .queue li[aria-current] button { background: #f4f2ff; color: var(--accent); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -133,11 +146,15 @@
   <main class="stage" id="stage">
     <canvas id="viz" aria-label="Frequency bars that move with the music" role="img"></canvas>
     <section class="drop" id="drop">
-      <h1>Drop a song here</h1>
+      <h1>Drop songs here</h1>
       <p>MP3, WAV, M4A or OGG. It plays right in your browser and never gets uploaded.</p>
       <button class="btn-primary" id="pick" type="button">Choose a file</button>
       <p class="error" id="error" role="alert"></p>
     </section>
+    <aside class="queue" id="queue" hidden aria-label="Queue">
+      <ol id="qlist"></ol>
+      <button class="tool" id="qadd" type="button">Add songs</button>
+    </aside>
   </main>
 
   <footer class="player" id="player">
@@ -153,12 +170,24 @@
         <span id="dur">0:00</span>
       </div>
     </div>
-    <button class="change" id="change" type="button">Change song</button>
+    <button class="change" id="change" type="button">Change songs</button>
+    <div class="tools">
+      <button class="tool" id="prev" type="button">Prev</button>
+      <button class="tool" id="next" type="button">Next</button>
+      <button class="tool" id="shuf" type="button" aria-pressed="false">Shuffle</button>
+      <button class="tool" id="rep" type="button">Repeat: off</button>
+      <button class="tool" id="spd" type="button" aria-label="Playback speed">1×</button>
+      <label class="vol">Vol <input type="range" id="vol" min="0" max="100" value="100" aria-label="Volume"></label>
+      <span class="grow"></span>
+      <button class="tool" id="theme" type="button" aria-label="Color theme">Aurora</button>
+      <button class="tool" id="fs" type="button">Fullscreen</button>
+      <button class="tool" id="qbtn" type="button" aria-expanded="false">Queue (0)</button>
+    </div>
   </footer>
 
   <div class="overlay" id="overlay">Drop to play</div>
   <audio id="audio" preload="auto"></audio>
-  <input type="file" id="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac" hidden>
+  <input type="file" id="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac" multiple hidden>
 
 <script>
 (function () {
@@ -210,8 +239,10 @@
   /* ---------- Beat detection + extra visual styles ---------- */
   var mode = "bars", wave = null, bassVal = 0, bassAvg = 0, beat = 0, lastBeat = 0, rot = 0, rings = [];
 
+  var themes = [["Aurora", 250, 125], ["Ocean", 150, 100], ["Sunset", 340, 80], ["Ember", 0, 55]], themeIdx = 0;
+  function hueOf(t) { var th = themes[themeIdx]; return (th[1] + t * th[2] + 360) % 360; }
   function hsl(t, a) {
-    return "hsl(" + ((250 + t * 125) % 360) + " 85% 58%" + (a == null ? "" : " / " + a) + ")";
+    return "hsl(" + hueOf(t) + " 85% 58%" + (a == null ? "" : " / " + a) + ")";
   }
 
   // A kick is when the low end jumps above its own running average.
@@ -358,7 +389,7 @@
   var drawers = { wave: drawWave, blob: drawBlob, radial: drawRadial };
   var tabs = document.querySelectorAll(".modes button");
   function setMode(m) {
-    mode = m; rings = [];
+    mode = m; rings = []; store("mode", m);
     for (var i = 0; i < tabs.length; i++) tabs[i].setAttribute("aria-pressed", tabs[i].getAttribute("data-mode") === m ? "true" : "false");
   }
   for (var t = 0; t < tabs.length; t++) tabs[t].addEventListener("click", function () { setMode(this.getAttribute("data-mode")); });
@@ -424,7 +455,7 @@
 
     for (var j = 0; j < barCount; j++) {
       var t = j / (barCount - 1);
-      var hue = (250 + t * 125) % 360;           // indigo, through magenta, to coral
+      var hue = hueOf(t);
       var bh = Math.max(4, levels[j] * maxH);
       var x = padX + j * (bw + gap);
       g.fillStyle = "hsl(" + hue + " 85% 58%)";
@@ -441,21 +472,49 @@
 
   function showError(msg) { errEl.textContent = msg; }
 
-  function loadFile(file) {
-    if (!file) return;
-    if (!(file.type && file.type.indexOf("audio/") === 0) && !AUDIO_EXT.test(file.name)) {
-      showError("That doesn’t look like an audio file. Try an MP3, WAV, M4A or OGG.");
-      return;
-    }
+  var queue = [], cur = -1, appendNext = false, shuffleOn = false, repeatMode = 0;
+  var qlist = $("qlist"), qbtn = $("qbtn");
+
+  function renderQueue() {
+    qlist.textContent = "";
+    queue.forEach(function (t, i) {
+      var li = document.createElement("li"), b = document.createElement("button");
+      b.type = "button"; b.textContent = (i + 1) + ". " + t.name;
+      if (i === cur) li.setAttribute("aria-current", "true");
+      b.addEventListener("click", function () { playAt(i); });
+      li.appendChild(b); qlist.appendChild(li);
+    });
+    qbtn.textContent = "Queue (" + queue.length + ")";
+  }
+
+  function playAt(i) {
+    var t = queue[i];
+    if (!t) return;
+    cur = i; audio.src = t.url; titleEl.textContent = t.name; renderQueue();
+    if ("mediaSession" in navigator) { try { navigator.mediaSession.metadata = new MediaMetadata({ title: t.name, artist: "Soundsight" }); } catch (e) {} }
+    audio.play().catch(function () {});
+  }
+
+  function step(d) {
+    if (!queue.length) return;
+    var i = (cur + d + queue.length) % queue.length;
+    if (shuffleOn && queue.length > 1) { do { i = Math.floor(Math.random() * queue.length); } while (i === cur); }
+    playAt(i);
+  }
+
+  function addFiles(list, append) {
+    var ok = Array.prototype.filter.call(list || [], function (f) {
+      return (f.type && f.type.indexOf("audio/") === 0) || AUDIO_EXT.test(f.name);
+    });
+    if (!ok.length) { showError("That doesn’t look like an audio file. Try an MP3, WAV, M4A or OGG."); return; }
     showError("");
     setupAudio();
     if (ctx.state === "suspended") ctx.resume();
-    if (objectUrl) URL.revokeObjectURL(objectUrl);
-    objectUrl = URL.createObjectURL(file);
-    audio.src = objectUrl;
-    titleEl.textContent = file.name.replace(/\.[^.]+$/, "");
+    if (!append) { queue.forEach(function (t) { URL.revokeObjectURL(t.url); }); queue = []; cur = -1; }
+    var first = queue.length;
+    ok.forEach(function (f) { queue.push({ name: f.name.replace(/\.[^.]+$/, ""), url: URL.createObjectURL(f) }); });
     document.body.classList.add("has-track");
-    audio.play().catch(function () {});
+    if (cur < 0) playAt(first); else renderQueue();
   }
 
   audio.addEventListener("error", function () {
@@ -497,12 +556,87 @@
     if (e.code === "Space" && (e.target === document.body)) { e.preventDefault(); togglePlay(); }
   });
 
+  /* ---------- Extra controls: queue, speed, volume, themes, fullscreen ---------- */
+  function store(k, v) { try { localStorage.setItem("ss:" + k, v); } catch (e) {} }
+  function recall(k) { try { return localStorage.getItem("ss:" + k); } catch (e) { return null; } }
+
+  var vol = $("vol"), lastVol = 1, speeds = [0.75, 1, 1.25, 1.5, 2], si = 1;
+  function setVol(v) { audio.volume = v; vol.value = Math.round(v * 100); store("vol", v); }
+  function toggleMute() { if (audio.volume > 0) { lastVol = audio.volume; setVol(0); } else setVol(lastVol || 1); }
+  vol.addEventListener("input", function () { audio.volume = vol.value / 100; store("vol", audio.volume); });
+
+  $("prev").addEventListener("click", function () { if (audio.currentTime > 3) audio.currentTime = 0; else step(-1); });
+  $("next").addEventListener("click", function () { step(1); });
+  $("shuf").addEventListener("click", function () { shuffleOn = !shuffleOn; this.setAttribute("aria-pressed", shuffleOn); });
+  $("rep").addEventListener("click", function () {
+    repeatMode = (repeatMode + 1) % 3;
+    audio.loop = repeatMode === 2;
+    this.textContent = "Repeat: " + ["off", "all", "one"][repeatMode];
+  });
+  $("spd").addEventListener("click", function () {
+    si = (si + 1) % speeds.length;
+    audio.defaultPlaybackRate = audio.playbackRate = speeds[si];
+    this.textContent = speeds[si] + "×";
+  });
+  audio.addEventListener("ended", function () { if (shuffleOn || repeatMode === 1 || cur < queue.length - 1) step(1); });
+
+  var qpanel = $("queue");
+  qbtn.addEventListener("click", function () {
+    qpanel.hidden = !qpanel.hidden;
+    qbtn.setAttribute("aria-expanded", String(!qpanel.hidden));
+  });
+  $("qadd").addEventListener("click", function () { openPicker(true); });
+
+  var themeBtn = $("theme");
+  function setTheme(i) {
+    themeIdx = i; themeBtn.textContent = themes[i][0];
+    document.documentElement.style.setProperty("--accent", "hsl(" + hueOf(0.3) + " 85% 58%)");
+    store("theme", i);
+  }
+  themeBtn.addEventListener("click", function () { setTheme((themeIdx + 1) % themes.length); });
+
+  var fsBtn = $("fs");
+  function toggleFs() {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen().catch(function () {});
+  }
+  if (!document.fullscreenEnabled) fsBtn.hidden = true;
+  fsBtn.addEventListener("click", toggleFs);
+
+  document.addEventListener("keydown", function (e) {
+    if (e.target !== document.body || e.metaKey || e.ctrlKey || e.altKey) return;
+    var k = e.key.toLowerCase(), d = audio.duration || 0;
+    if (k === "arrowright" && audio.src) { e.preventDefault(); audio.currentTime = Math.min(d, audio.currentTime + 5); }
+    else if (k === "arrowleft" && audio.src) { e.preventDefault(); audio.currentTime = Math.max(0, audio.currentTime - 5); }
+    else if (k === "arrowup") { e.preventDefault(); setVol(Math.min(1, audio.volume + 0.05)); }
+    else if (k === "arrowdown") { e.preventDefault(); setVol(Math.max(0, audio.volume - 0.05)); }
+    else if (k === "m") toggleMute();
+    else if (k === "f") toggleFs();
+    else if (k === "n") step(1);
+    else if (k === "p") step(-1);
+    else if (k === "t") setTheme((themeIdx + 1) % themes.length);
+  });
+
+  if ("mediaSession" in navigator) {
+    try {
+      navigator.mediaSession.setActionHandler("play", togglePlay);
+      navigator.mediaSession.setActionHandler("pause", togglePlay);
+      navigator.mediaSession.setActionHandler("previoustrack", function () { step(-1); });
+      navigator.mediaSession.setActionHandler("nexttrack", function () { step(1); });
+    } catch (e) {}
+  }
+
+  // Restore saved preferences
+  var sv = parseFloat(recall("vol")); if (isFinite(sv)) setVol(Math.max(0, Math.min(1, sv)));
+  var st = parseInt(recall("theme"), 10); setTheme(st >= 0 && st < themes.length ? st : 0);
+  var sm = recall("mode"); if (sm && (sm === "bars" || drawers[sm])) setMode(sm);
+
   /* ---------- File picking and drag-and-drop ---------- */
-  function openPicker() { fileInput.click(); }
+  function openPicker(add) { appendNext = add === true; fileInput.click(); }
   $("pick").addEventListener("click", openPicker);
   $("change").addEventListener("click", openPicker);
   fileInput.addEventListener("change", function () {
-    loadFile(fileInput.files[0]);
+    addFiles(fileInput.files, appendNext);
     fileInput.value = "";
   });
 
@@ -523,7 +657,7 @@
     if (!hasFiles(e)) return;
     e.preventDefault(); depth = 0;
     overlay.classList.remove("show"); drop.classList.remove("is-over");
-    loadFile(e.dataTransfer.files[0]);
+    addFiles(e.dataTransfer.files, false);
   });
 })();
 </script>
