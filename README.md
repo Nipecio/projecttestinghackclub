@@ -1,36 +1,42 @@
-Soundsight
+# Soundsight
 
-So this is a music visualizer I made for Hack Club. You drop a song in and it turns the sound into stuff that moves. Bars bounce, a blob swells when the bass hits, you get the idea.
+Soundsight is a browser-based music visualizer that turns audio into real-time visuals. Load a song from your device or use your microphone to see the visuals move with the sound.
 
-It works with basically any song. The visuals come straight from the audio while it plays, nothing is timed by hand.
+## Getting Started
 
-How to use it
-Open index.html in your browser (or use the Live Server extension in VS Code)
-Drag a song onto the page, or hit Choose a file
-Pick a style up top, or press 1, 2, 3, 4
-Press space to pause
-Cycle through the color themes and toggle the glow from the player controls
+1. Open `index.html` in a modern browser. There's no installation or build step.
+2. Click **Choose a file** or drag your audio files onto the page.
+3. Pick a visualizer style from the controls at the top.
+4. Use the player to control playback, skip through tracks, adjust volume, and manage your queue.
 
-Your song never gets uploaded anywhere. It just plays in your browser.
+To use your microphone, allow access when prompted. Depending on your browser, you may need to open the page through `localhost` or HTTPS.
 
-The four styles
-Bars: frequency bars with little peak caps that float back down
-Wave: a smooth line that wiggles with the sound
-Blob: a soft shape that swells with the bass and sticks out in different directions
-Radial: bars in a circle, mirrored so it looks even on every side
+## Features
 
-The player also includes five full-page color themes and a glow toggle to tune the look.
+**Visualizers:** Choose between Bars, Wave, Blob, and Radial.
 
-How it works (the short version)
+**Queue:** Add multiple songs, drag to reorder them, or remove tracks whenever you want.
 
-The Web Audio API has an AnalyserNode that runs an FFT on whatever's playing, which splits the sound into frequencies. I group those on a log scale so the bass gets more room, and then smooth everything so it isn't jittery (it goes up fast and falls slowly).
+**Track info:** Display available song titles, artist names, and embedded album artwork.
 
-There's also a basic beat detector. It keeps a running average of how loud the low end is, and when the bass suddenly jumps above that average it counts as a kick drum. That's what makes the rings shoot out.
+**Microphone:** Use live microphone input to create visuals from sounds around you.
 
-Stuff I used
+**Audio settings:** Adjust sensitivity and smoothing to change how the visuals react to sound.
 
-Just plain HTML, CSS, and JavaScript in one file. No libraries, no server.
+**Themes:** Switch between Aurora, Ocean, Sunset, Ember, and Daylight. You can also enable the glow effect or let the visualizer cycle through styles automatically.
 
-Things I might add:
-Particles that burst on the beat
-Microphone input
+**Capture:** Save a screenshot as a PNG or record the visualizer as a WebM video. Audio can be included in recordings when supported by your browser.
+
+**Playback:** Shuffle tracks, repeat songs, change playback speed, seek through audio, and adjust volume.
+
+## Keyboard Shortcuts
+
+Press `1`, `2`, `3`, or `4` to switch between Bars, Wave, Blob, and Radial. The page needs to be focused for these shortcuts to work.
+
+## Privacy
+
+Audio files are processed locally in your browser and aren't uploaded by Soundsight. The app loads jsmediatags from cdnjs to read track metadata and Instrument Sans from Google Fonts for its typeface.
+
+## Built With
+
+HTML, CSS, and JavaScript, with HTML Canvas for the visuals and the Web Audio API for audio playback and analysis. Track metadata is handled by [jsmediatags](https://github.com/aadsm/jsmediatags).
