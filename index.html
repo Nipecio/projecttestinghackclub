@@ -73,7 +73,7 @@
   .btn-primary:hover { filter: brightness(1.12); }
   .error { margin: 16px 0 0; color: var(--danger); font-size: 14px; min-height: 0; }
   .error:empty { display: none; }
-  body.has-track .drop { display: none; }
+  body.has-track .drop, body.has-mic .drop { display: none; }
 
   .player {
     display: none;
@@ -84,7 +84,7 @@
     background: var(--panel);
     backdrop-filter: blur(18px);
   }
-  body.has-track .player { display: grid; }
+  body.has-track .player, body.has-mic .player { display: grid; }
   .play {
     width: 46px; height: 46px; border-radius: 50%; border: 0;
     background: var(--accent); color: #fff; display: grid; place-items: center;
@@ -143,6 +143,14 @@
   .queue li button { width: 100%; text-align: left; background: none; border: 0; padding: 8px 10px; border-radius: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .queue li button:hover { background: var(--soft); }
   .queue li[aria-current] button { background: var(--soft); color: var(--accent); font-weight: 600; }
+  .btn-ghost { margin-left: 8px; background: var(--soft); border: 1px solid var(--line); padding: 11px 20px; border-radius: 999px; font-weight: 600; }
+  .btn-ghost:hover { background: var(--line); }
+  .help { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 6; width: min(380px, calc(100% - 32px)); background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; backdrop-filter: blur(18px); box-shadow: 0 24px 80px rgba(0, 0, 0, .2); }
+  .help[hidden] { display: none; }
+  .help h2 { margin: 0 0 12px; font-size: 16px; letter-spacing: -0.01em; }
+  .help dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; font-size: 14px; }
+  .help dt { font-weight: 600; color: var(--accent); }
+  .help dd { margin: 0; color: var(--muted); }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
   }
@@ -158,6 +166,7 @@
       <button type="button" data-mode="wave" aria-pressed="false">Wave</button>
       <button type="button" data-mode="blob" aria-pressed="false">Blob</button>
       <button type="button" data-mode="radial" aria-pressed="false">Radial</button>
+      <button type="button" data-mode="stars" aria-pressed="false">Stars</button>
     </div>
   </header>
 
@@ -167,11 +176,28 @@
       <h1>Drop songs here</h1>
       <p>Turn your favorite tracks into living color. Your audio stays right here in your browser.</p>
       <button class="btn-primary" id="pick" type="button">Choose a file</button>
+      <button class="btn-ghost" id="micStart" type="button">Use microphone</button>
       <p class="error" id="error" role="alert"></p>
     </section>
     <aside class="queue" id="queue" hidden aria-label="Queue">
       <ol id="qlist"></ol>
       <button class="tool" id="qadd" type="button">Add songs</button>
+    </aside>
+    <aside class="help" id="helpPanel" hidden aria-label="Keyboard shortcuts">
+      <h2>Keyboard shortcuts</h2>
+      <dl>
+        <dt>Space</dt><dd>Play or pause</dd>
+        <dt>← →</dt><dd>Seek 5 seconds</dd>
+        <dt>↑ ↓</dt><dd>Volume</dd>
+        <dt>M</dt><dd>Mute</dd>
+        <dt>N / P</dt><dd>Next or previous song</dd>
+        <dt>1 – 5</dt><dd>Switch visual style</dd>
+        <dt>A</dt><dd>Auto-cycle styles every 15 seconds</dd>
+        <dt>T</dt><dd>Next color theme</dd>
+        <dt>S</dt><dd>Save a snapshot as PNG</dd>
+        <dt>F</dt><dd>Fullscreen</dd>
+        <dt>?</dt><dd>Show or hide this panel</dd>
+      </dl>
     </aside>
   </main>
 
@@ -197,6 +223,10 @@
       <button class="tool" id="spd" type="button" aria-label="Playback speed">1×</button>
       <label class="vol">Vol <input type="range" id="vol" min="0" max="100" value="100" aria-label="Volume"></label>
       <span class="grow"></span>
+      <button class="tool" id="mic" type="button" aria-pressed="false">Mic</button>
+      <button class="tool" id="auto" type="button" aria-pressed="false">Auto</button>
+      <button class="tool" id="snap" type="button">Snapshot</button>
+      <button class="tool" id="help" type="button" aria-expanded="false" aria-label="Keyboard shortcuts">?</button>
       <button class="tool" id="theme" type="button" aria-label="Color theme">Daylight</button>
       <button class="tool" id="glow" type="button" aria-pressed="true">Glow</button>
       <button class="tool" id="fs" type="button">Fullscreen</button>
@@ -294,7 +324,7 @@
     }
   }
 
-  var waveSm = new Float32Array(128), waveYs = new Float32Array(128);
+  var WN = 160, waveEnv = new Float32Array(WN), waveAmp = new Float32Array(WN), waveYs = new Float32Array(WN), wavePhase = 0;
   var rpk = new Float32Array(64), nrm = new Float32Array(64);
 
   // Give every band its own loudness scale so each one uses its full range.
@@ -305,64 +335,120 @@
       nrm[i] = Math.min(1, levels[i] / rpk[i]);
     }
   }
-  var lobes = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], spin = 0, pump = 0;
+  var lobes = [], ghost = [], spin = 0, pump = 0, LN = 16, LG = 8;
+  for (var li = 0; li < LN; li++) { lobes.push(0); ghost.push(0); }
 
-  // Average nearby samples and use fixed gain to avoid aliasing and runaway auto-normalization.
-  function drawWave(w, h) {
-    var n = waveSm.length, mid = h / 2 - 10, amp = h * 0.24 * (1 + beat * 0.08), p;
-    if (ctx) {
-      if (!wave || wave.length !== analyser.fftSize) wave = new Uint8Array(analyser.fftSize);
-      analyser.getByteTimeDomainData(wave);
-    }
-    for (p = 0; p < n; p++) {
-      var start = ctx ? Math.floor(p / n * wave.length) : 0;
-      var end = ctx ? Math.max(start + 1, Math.floor((p + 1) / n * wave.length)) : 0;
-      var sum = 0;
-      for (var q = start; q < end; q++) sum += wave[q] - 128;
-      var v = ctx ? sum / (end - start) / 128 : 0;
-      waveSm[p] += (v - waveSm[p]) * 0.2;
-    }
-    for (p = 0; p < n; p++) {
-      var edge = Math.min(1, p / 8, (n - 1 - p) / 8);
-      waveYs[p] = mid + Math.max(-0.8, Math.min(0.8, waveSm[p] * 1.8)) * amp * edge;
-    }
-    var grad = g.createLinearGradient(0, 0, w, 0);
-    grad.addColorStop(0, hsl(0)); grad.addColorStop(0.5, hsl(0.5)); grad.addColorStop(1, hsl(1));
-    var fill = g.createLinearGradient(0, mid - amp, 0, mid + amp);
-    fill.addColorStop(0, hsl(0, 0.02)); fill.addColorStop(0.5, hsl(0.5, 0.2)); fill.addColorStop(1, hsl(1, 0.02));
-    g.beginPath(); g.moveTo(0, mid); g.lineTo(0, waveYs[0]);
+  function wavePath(ys, w) {
+    var n = ys.length, p;
+    g.beginPath();
+    g.moveTo(0, ys[0]);
     for (p = 1; p < n - 1; p++) {
-      var fx1 = p / (n - 1) * w, fx2 = (p + 1) / (n - 1) * w;
-      g.quadraticCurveTo(fx1, waveYs[p], (fx1 + fx2) / 2, (waveYs[p] + waveYs[p + 1]) / 2);
+      var x1 = p / (n - 1) * w, x2 = (p + 1) / (n - 1) * w;
+      g.quadraticCurveTo(x1, ys[p], (x1 + x2) / 2, (ys[p] + ys[p + 1]) / 2);
     }
-    g.lineTo(w, waveYs[n - 1]); g.lineTo(w, mid); g.closePath();
-    g.fillStyle = fill; g.fill();
-    g.lineJoin = "round"; g.lineCap = "round"; g.strokeStyle = grad;
-    g.shadowColor = hsl(0.5, 0.7); g.shadowBlur = glowOn ? 22 : 0;
-    for (var pass = 0; pass < 2; pass++) {
-      g.globalAlpha = pass ? 1 : 0.14;
-      g.lineWidth = pass ? 3 + beat * 2 : 12;
-      g.beginPath();
-      g.moveTo(0, waveYs[0]);
-      for (p = 1; p < n - 1; p++) {
-        var x1 = p / (n - 1) * w, x2 = (p + 1) / (n - 1) * w;
-        g.quadraticCurveTo(x1, waveYs[p], (x1 + x2) / 2, (waveYs[p] + waveYs[p + 1]) / 2);
-      }
-      g.lineTo(w, waveYs[n - 1]);
-      g.stroke();
-    }
-    g.globalAlpha = 1; g.shadowBlur = 0;
+    g.lineTo(w, ys[n - 1]);
   }
 
-  // Blob: 12 control points joined by smooth curves. It swells and punches on every
-  // beat, spins faster when the music is busy, and each lobe stretches out with its
-  // own slice of the spectrum.
+  // Wave: a flowing ribbon, not a raw oscilloscope trace. Raw audio samples flip
+  // direction thousands of times a second, which is what made it jumpy. Here every
+  // stretch of the line is driven by its own slice of the spectrum (bass on the left,
+  // treble on the right, same colors as the bars), eased in time and space, and the
+  // ripple travels along the line. No fill underneath, just the line and its glow.
+  var waveLayers = [
+    { c: 1,   ph: 0,   dir: 1,  s: 1,    lw: 3,   a: 1 },
+    { c: 1.6, ph: 2.1, dir: -1, s: 0.6,  lw: 2,   a: 0.5 },
+    { c: 0.7, ph: 4.2, dir: 1,  s: 0.45, lw: 2,   a: 0.3 }
+  ];
+  function drawWave(w, h) {
+    var n = WN, mid = h / 2 - 10, amp = h * 0.26 * (1 + beat * 0.1), p, k, L, e = 0;
+    for (k = 0; k < barCount; k++) e += nrm[k];
+    e /= barCount;
+    wavePhase += 0.025 + e * 0.05 + beat * 0.05;
+    var cycles = w < 520 ? 2 : 3;
+
+    for (p = 0; p < n; p++) {
+      var pos = p / (n - 1) * (barCount - 1), i0 = Math.floor(pos), i1 = Math.min(barCount - 1, i0 + 1), f = pos - i0;
+      var tg = nrm[i0] * (1 - f) + nrm[i1] * f;
+      waveEnv[p] += (tg - waveEnv[p]) * (tg > waveEnv[p] ? 0.3 : 0.1);
+    }
+    for (p = 0; p < n; p++) {
+      var a0 = waveEnv[Math.max(0, p - 1)], a2 = waveEnv[Math.min(n - 1, p + 1)];
+      waveAmp[p] = (a0 + waveEnv[p] * 2 + a2) / 4;
+    }
+
+    var grad = g.createLinearGradient(0, 0, w, 0), s;
+    for (s = 0; s <= 8; s++) grad.addColorStop(s / 8, hsl(s / 8));
+    g.lineJoin = "round"; g.lineCap = "round"; g.strokeStyle = grad;
+
+    for (L = waveLayers.length - 1; L >= 0; L--) {
+      var lay = waveLayers[L];
+      for (p = 0; p < n; p++) {
+        var t = p / (n - 1), taper = Math.pow(Math.sin(Math.PI * t), 0.7);
+        var ang = t * Math.PI * 2 * cycles * lay.c + wavePhase * lay.dir + lay.ph;
+        var shape = (Math.sin(ang) + 0.3 * Math.sin(ang * 2.1 + wavePhase * 0.7)) / 1.3;
+        waveYs[p] = mid + shape * (0.05 + 0.95 * waveAmp[p]) * amp * lay.s * taper;
+      }
+      wavePath(waveYs, w);
+      if (L === 0) {
+        g.shadowColor = hsl(0.5, 0.7); g.shadowBlur = glowOn ? 22 : 0;
+        g.globalAlpha = 0.14; g.lineWidth = 12; g.stroke();
+        g.globalAlpha = 1; g.lineWidth = lay.lw + beat * 2; g.stroke();
+        g.shadowBlur = 0;
+      } else {
+        g.globalAlpha = lay.a; g.lineWidth = lay.lw; g.stroke();
+      }
+    }
+    g.globalAlpha = 1;
+  }
+
+  // Blob: 16 control points joined by smooth curves. It swells on every beat, spins
+  // faster when the music is busy, and each lobe stretches with its own slice of the
+  // spectrum. Colors are painted around the blob by lobe, so it carries the same
+  // per-band hues as the bars and ring, and a slow-falling outline trails behind it
+  // like the peak caps on the bars.
+  function blobPts(arr, R, now) {
+    var P = [], i;
+    for (i = 0; i < LN; i++) {
+      var a = i / LN * Math.PI * 2 + spin;
+      var r = R * (1 + arr[i] * 0.9 + Math.sin(now / 600 + i * 1.9) * 0.07 + Math.sin(now / 950 - i * 2.7) * 0.05);
+      P.push([bx + Math.cos(a) * r, by + Math.sin(a) * r]);
+    }
+    return P;
+  }
+  var bx = 0, by = 0;
+  function traceBlob(P) {
+    var N = P.length;
+    g.beginPath();
+    g.moveTo(P[0][0], P[0][1]);
+    for (var k = 0; k < N; k++) {
+      var p0 = P[(k + N - 1) % N], p1 = P[k], p2 = P[(k + 1) % N], p3 = P[(k + 2) % N];
+      g.bezierCurveTo(p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6,
+                      p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6, p2[0], p2[1]);
+    }
+    g.closePath();
+  }
+  function blobPaint(R, alpha) {
+    var cg, i, gi;
+    if (g.createConicGradient) {
+      cg = g.createConicGradient(spin, bx, by);
+      for (i = 0; i <= LN; i++) {
+        gi = i < LG ? i : LN - 1 - i;
+        cg.addColorStop(i / LN, hsl(Math.max(0, Math.min(1, gi / (LG - 1))), alpha));
+      }
+    } else {
+      cg = g.createRadialGradient(bx - R * 0.3, by - R * 0.35, R * 0.1, bx, by, R * 1.5);
+      cg.addColorStop(0, hsl(1, alpha)); cg.addColorStop(0.5, hsl(0.5, alpha)); cg.addColorStop(1, hsl(0, alpha));
+    }
+    return cg;
+  }
+
   function drawBlob(w, h, now) {
-    var cx = w / 2, cy = h / 2 - 10, N = 12, G = 6, i, j, e = 0;
-    var per = Math.floor(barCount * 0.8 / G);
+    var N = LN, G = LG, i, j, e = 0;
+    bx = w / 2; by = h / 2 - 10;
+    var per = Math.max(1, Math.floor(barCount * 0.8 / G));
     for (i = 0; i < barCount; i++) e += nrm[i];
     e /= barCount;
-    spin += 0.003 + e * 0.025 + beat * 0.03;
+    spin += 0.003 + e * 0.02 + beat * 0.025;
     pump += (Math.max(e, beat * 0.9) - pump) * 0.3;
     var R = Math.min(w, h) * 0.16 * (1 + pump * 0.7);
     for (i = 0; i < N; i++) {
@@ -370,29 +456,27 @@
       for (j = 0; j < per; j++) s += nrm[gi * per + j];
       var tg = Math.min(1, s / per * 1.4);
       lobes[i] += (tg - lobes[i]) * (tg > lobes[i] ? 0.4 : 0.12);
+      if (lobes[i] >= ghost[i]) ghost[i] = lobes[i];
+      else ghost[i] = Math.max(lobes[i], ghost[i] - 0.008);
     }
-    drawRings(cx, cy, R);
-    var P = [];
-    for (i = 0; i < N; i++) {
-      var a = i / N * Math.PI * 2 + spin;
-      var r = R * (1 + lobes[i] * 1.0 + Math.sin(now / 600 + i * 1.9) * 0.07 + Math.sin(now / 950 - i * 2.7) * 0.05);
-      P.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
-    }
-    function trace() {
-      g.beginPath();
-      g.moveTo(P[0][0], P[0][1]);
-      for (var k = 0; k < N; k++) {
-        var p0 = P[(k + N - 1) % N], p1 = P[k], p2 = P[(k + 1) % N], p3 = P[(k + 2) % N];
-        g.bezierCurveTo(p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6,
-                        p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6, p2[0], p2[1]);
-      }
-      g.closePath();
-    }
-    var grad = g.createRadialGradient(cx - R * 0.3, cy - R * 0.35, R * 0.1, cx, cy, R * 1.35);
-    grad.addColorStop(0, hsl(1)); grad.addColorStop(0.5, hsl(0.55)); grad.addColorStop(1, hsl(0.05));
-    g.shadowColor = hsl(0.5, 0.35); g.shadowBlur = glowOn ? 40 : 0;
-    g.fillStyle = grad; trace(); g.fill();
+    drawRings(bx, by, R);
+
+    var body = blobPts(lobes, R, now), echo = blobPts(ghost, R * 1.06, now);
+    g.lineJoin = "round"; g.lineWidth = 2.5;
+    g.strokeStyle = blobPaint(R, 0.35); traceBlob(echo); g.stroke();
+
+    g.shadowColor = hsl(0.5, 0.45); g.shadowBlur = glowOn ? 40 : 0;
+    g.fillStyle = blobPaint(R, 1); traceBlob(body); g.fill();
     g.shadowBlur = 0;
+
+    g.save();
+    traceBlob(body); g.clip();
+    var gl = g.createRadialGradient(bx - R * 0.35, by - R * 0.45, R * 0.05, bx, by, R * 1.6);
+    gl.addColorStop(0, "rgba(255,255,255,.4)");
+    gl.addColorStop(0.45, "rgba(255,255,255,.08)");
+    gl.addColorStop(1, "rgba(0,0,0,.18)");
+    g.fillStyle = gl; g.fillRect(bx - R * 5, by - R * 5, R * 10, R * 10);
+    g.restore();
   }
 
   // Balanced ring: bar lengths follow the music, but the pattern repeats in all four
@@ -419,7 +503,35 @@
     g.shadowBlur = 0;
   }
 
-  var drawers = { wave: drawWave, blob: drawBlob, radial: drawRadial };
+  // Stars: a starfield flying at you. Overall energy sets the speed and the star count,
+  // every beat throws a burst of new stars, and each star keeps the hue of the band it was born from.
+  var stars = [];
+  function spawnStar(burst) {
+    stars.push({ a: Math.random() * Math.PI * 2, d: burst ? 0.02 + Math.random() * 0.08 : Math.random() * 0.2,
+      v: 0.002 + Math.random() * 0.004, t: Math.random(), s: 1 + Math.random() * 1.8 });
+  }
+  function drawStars(w, h) {
+    var cx = w / 2, cy = h / 2 - 10, R = Math.hypot(w, h) / 2, e = 0, i;
+    for (i = 0; i < barCount; i++) e += nrm[i];
+    e /= barCount;
+    var want = 60 + Math.round(e * 220);
+    if (beat > 0.95) for (i = 0; i < 28; i++) spawnStar(true);
+    while (stars.length < want) spawnStar(false);
+    g.lineCap = "round"; g.shadowColor = hsl(0.5, 0.55); g.shadowBlur = glowOn ? 10 : 0;
+    for (i = stars.length - 1; i >= 0; i--) {
+      var st = stars[i], prev = st.d;
+      st.d += st.v * (1 + e * 5 + beat * 3) * (0.4 + st.d * 3);
+      if (st.d > 1) { stars.splice(i, 1); continue; }
+      var dd = st.d - prev, r0 = Math.max(0, st.d - dd * 5) * R, r1 = st.d * R, c = Math.cos(st.a), sn = Math.sin(st.a);
+      g.strokeStyle = hsl(st.t, Math.min(1, st.d * 4));
+      g.lineWidth = st.s * (0.5 + st.d * 2.5);
+      g.beginPath(); g.moveTo(cx + c * r0, cy + sn * r0); g.lineTo(cx + c * r1, cy + sn * r1); g.stroke();
+    }
+    g.shadowBlur = 0;
+  }
+
+  var drawers = { wave: drawWave, blob: drawBlob, radial: drawRadial, stars: drawStars };
+  var autoOn = false, autoAt = 0, modeList = ["bars", "wave", "blob", "radial", "stars"];
   var tabs = document.querySelectorAll(".modes button");
   function setMode(m) {
     mode = m; rings = []; store("mode", m);
@@ -427,13 +539,14 @@
       bars: "Frequency bars that move with the music",
       wave: "Audio waveform that moves with the music",
       blob: "Audio-reactive blob that moves with the music",
-      radial: "Circular frequency bars that move with the music"
+      radial: "Circular frequency bars that move with the music",
+      stars: "Starfield that speeds up with the music"
     }[m]);
     for (var i = 0; i < tabs.length; i++) tabs[i].setAttribute("aria-pressed", tabs[i].getAttribute("data-mode") === m ? "true" : "false");
   }
   for (var t = 0; t < tabs.length; t++) tabs[t].addEventListener("click", function () { setMode(this.getAttribute("data-mode")); });
   document.addEventListener("keydown", function (e) {
-    var i = "1234".indexOf(e.key);
+    var i = "12345".indexOf(e.key);
     if (i !== -1 && e.target === document.body) setMode(tabs[i].getAttribute("data-mode"));
   });
 
@@ -483,6 +596,7 @@
     }
 
     now = now || 0;
+    if (autoOn && now - autoAt > 15000) { autoAt = now; setMode(modeList[(modeList.indexOf(mode) + 1) % modeList.length]); }
     bassVal = detectBeat(now);
     if (mode !== "bars") { normBands(); drawers[mode](w, h, now); requestAnimationFrame(frame); return; }
 
@@ -531,6 +645,7 @@
   function playAt(i) {
     var t = queue[i];
     if (!t) return;
+    if (micStream) stopMic();
     cur = i; audio.src = t.url; titleEl.textContent = t.name; renderQueue();
     if ("mediaSession" in navigator) { try { navigator.mediaSession.metadata = new MediaMetadata({ title: t.name, artist: "Soundsight" }); } catch (e) {} }
     audio.play().catch(function () {});
@@ -647,6 +762,51 @@
   }
   themeBtn.addEventListener("click", function () { setTheme((themeIdx + 1) % themes.length); });
 
+  var micBtn = $("mic"), micStream = null, micSrc = null;
+  function stopMic() {
+    if (micSrc) { try { micSrc.disconnect(); } catch (e) {} micSrc = null; }
+    if (micStream) { micStream.getTracks().forEach(function (tr) { tr.stop(); }); micStream = null; }
+    document.body.classList.remove("has-mic");
+    micBtn.setAttribute("aria-pressed", "false");
+  }
+  function toggleMic() {
+    if (micStream) { stopMic(); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { showError("This browser can’t use the microphone."); return; }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      setupAudio(); if (ctx.state === "suspended") ctx.resume();
+      audio.pause();
+      micStream = stream; micSrc = ctx.createMediaStreamSource(stream);
+      micSrc.connect(analyser);               // analyser only, so the mic never plays back through the speakers
+      document.body.classList.add("has-mic");
+      micBtn.setAttribute("aria-pressed", "true");
+      showError("");
+    }).catch(function () { showError("Couldn’t reach the microphone. Check the browser’s permission and try again."); });
+  }
+  micBtn.addEventListener("click", toggleMic);
+  $("micStart").addEventListener("click", toggleMic);
+
+  var autoBtn = $("auto");
+  function setAuto(on) { autoOn = on; autoAt = performance.now(); autoBtn.setAttribute("aria-pressed", String(on)); }
+  autoBtn.addEventListener("click", function () { setAuto(!autoOn); });
+
+  function snap() {
+    var c = document.createElement("canvas"); c.width = canvas.width; c.height = canvas.height;
+    var x = c.getContext("2d");
+    x.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#000";
+    x.fillRect(0, 0, c.width, c.height); x.drawImage(canvas, 0, 0);
+    c.toBlob(function (b) {
+      if (!b) return;
+      var a = document.createElement("a"); a.href = URL.createObjectURL(b);
+      a.download = "soundsight-" + mode + ".png"; a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    });
+  }
+  $("snap").addEventListener("click", snap);
+
+  var helpPanel = $("helpPanel"), helpBtn = $("help");
+  function toggleHelp() { helpPanel.hidden = !helpPanel.hidden; helpBtn.setAttribute("aria-expanded", String(!helpPanel.hidden)); }
+  helpBtn.addEventListener("click", toggleHelp);
+
   var glowBtn = $("glow");
   function setGlow(enabled) {
     glowOn = enabled;
@@ -675,6 +835,10 @@
     else if (k === "n") step(1);
     else if (k === "p") step(-1);
     else if (k === "t") setTheme((themeIdx + 1) % themes.length);
+    else if (k === "s") snap();
+    else if (k === "a") setAuto(!autoOn);
+    else if (k === "?") toggleHelp();
+    else if (k === "escape" && !helpPanel.hidden) toggleHelp();
   });
 
   if ("mediaSession" in navigator) {

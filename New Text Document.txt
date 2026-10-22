@@ -4,20 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Soundsight</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%235d49db'/%3E%3Cpath d='M5 16s4-7 11-7 11 7 11 7-4 7-11 7S5 16 5 16Z' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='16' r='3.3' fill='%239ff4dc'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%235d49db'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Arial,sans-serif' font-size='14' font-weight='700' fill='white'%3ESS%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     color-scheme: light;
-    --bg: #ffffff;
-    --ink: #17171f;
-    --muted: #6a6d7a;
-    --line: #e4e5ea;
-    --soft: #f6f6f9;
-    --accent: #5b4bff;
+    --bg: #f3f4fb;
+    --ink: #1c1d2b;
+    --muted: #686b7d;
+    --line: rgba(43, 45, 76, 0.15);
+    --soft: rgba(43, 45, 76, 0.07);
+    --accent: #5d49db;
     --danger: #c42b4a;
+    --panel: rgba(255, 255, 255, 0.84);
+    --glow-a: rgba(128, 103, 255, 0.14);
+    --glow-b: rgba(69, 195, 192, 0.11);
     box-sizing: border-box;
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -26,7 +29,8 @@
   *, *::before, *::after { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body {
-    background: var(--bg);
+    background: radial-gradient(ellipse at 18% 18%, var(--glow-a), transparent 48%),
+                radial-gradient(ellipse at 82% 75%, var(--glow-b), transparent 46%), var(--bg);
     color: var(--ink);
     font: 400 16px/1.5 "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     display: flex;
@@ -37,11 +41,13 @@
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
   header { padding: 20px 28px 0; font-weight: 700; font-size: 18px; letter-spacing: -0.01em; }
-  .brand { display: flex; align-items: center; gap: 10px; }
-  .brand-mark { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 9px; color: #fff; background: linear-gradient(135deg, var(--accent), #35c9b4); }
-  .brand-mark svg { width: 19px; height: 19px; }
-
   .stage { position: relative; flex: 1; min-height: 0; }
+  .stage::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .16;
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse at center, #000 8%, transparent 76%);
+  }
   canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
   .drop {
@@ -50,22 +56,24 @@
     width: min(520px, calc(100% - 40px));
     padding: 44px 32px 36px;
     text-align: center;
-    background: rgba(255,255,255,0.92);
-    border: 1.5px dashed #c5c7d1;
+    background: var(--panel);
+    border: 1.5px dashed var(--line);
     border-radius: 20px;
-    transition: border-color .15s, background .15s;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, .2);
+    backdrop-filter: blur(18px);
+    transition: border-color .15s, background .15s, transform .2s;
   }
-  .drop.is-over { border-color: var(--accent); background: #f4f2ff; }
+  .drop.is-over { border-color: var(--accent); background: var(--soft); transform: translate(-50%, -50%) scale(1.02); }
   .drop h1 { margin: 0 0 8px; font-size: 30px; line-height: 1.15; letter-spacing: -0.02em; font-weight: 700; }
   .drop p { margin: 0 auto 24px; max-width: 38ch; color: var(--muted); }
   .btn-primary {
-    background: var(--ink); color: #fff; border: 0;
+    background: var(--accent); color: #fff; border: 0;
     padding: 12px 22px; border-radius: 999px; font-weight: 600;
   }
-  .btn-primary:hover { background: #2c2c3a; }
+  .btn-primary:hover { filter: brightness(1.12); }
   .error { margin: 16px 0 0; color: var(--danger); font-size: 14px; min-height: 0; }
   .error:empty { display: none; }
-  body.has-track .drop { display: none; }
+  body.has-track .drop, body.has-mic .drop { display: none; }
 
   .player {
     display: none;
@@ -73,14 +81,15 @@
     align-items: center; gap: 8px 16px;
     padding: 14px 24px 18px;
     border-top: 1px solid var(--line);
-    background: var(--bg);
+    background: var(--panel);
+    backdrop-filter: blur(18px);
   }
-  body.has-track .player { display: grid; }
+  body.has-track .player, body.has-mic .player { display: grid; }
   .play {
     width: 46px; height: 46px; border-radius: 50%; border: 0;
-    background: var(--ink); color: #fff; display: grid; place-items: center;
+    background: var(--accent); color: #fff; display: grid; place-items: center;
   }
-  .play:hover { background: #2c2c3a; }
+  .play:hover { filter: brightness(1.12); }
   .play svg { width: 20px; height: 20px; fill: currentColor; }
   .play .i-pause { display: none; }
   .play.is-playing .i-pause { display: block; }
@@ -95,19 +104,19 @@
     background: var(--soft); border: 1px solid var(--line);
     padding: 9px 16px; border-radius: 999px; font-weight: 500; font-size: 14px;
   }
-  .change:hover { background: #ececf2; }
+  .change:hover { background: var(--soft); }
 
   header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .modes { display: flex; gap: 2px; padding: 3px; background: var(--soft); border: 1px solid var(--line); border-radius: 999px; }
   .modes button { background: none; border: 0; padding: 6px 15px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--muted); }
   .modes button:hover { color: var(--ink); }
-  .modes button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .modes button[aria-pressed="true"] { background: var(--accent); color: #fff; }
   @media (max-width: 560px) { .modes button { padding: 6px 11px; font-size: 13px; } }
 
   .overlay {
     position: fixed; inset: 0; z-index: 10;
     display: none; place-items: center;
-    background: rgba(244,242,255,0.88);
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
     border: 3px dashed var(--accent);
     font-size: 28px; font-weight: 700; letter-spacing: -0.02em;
     pointer-events: none;
@@ -124,22 +133,32 @@
   .tools { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
   .tools .grow { flex: 1; }
   .tool { background: var(--soft); border: 1px solid var(--line); padding: 6px 13px; border-radius: 999px; font-weight: 500; font-size: 13px; }
-  .tool:hover { background: #ececf2; }
-  .tool[aria-pressed="true"], .tool[aria-expanded="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .tool:hover { background: var(--soft); }
+  .tool[aria-pressed="true"], .tool[aria-expanded="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
   .vol { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
   .vol input { width: 90px; flex: none; }
-  .queue { position: absolute; right: 16px; bottom: 12px; z-index: 5; width: min(320px, calc(100% - 32px)); max-height: 60%; overflow: auto; background: rgba(255,255,255,0.96); border: 1px solid var(--line); border-radius: 16px; padding: 8px; }
+  .queue { position: absolute; right: 16px; bottom: 12px; z-index: 5; width: min(320px, calc(100% - 32px)); max-height: 60%; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 8px; backdrop-filter: blur(18px); }
   .queue[hidden] { display: none; }
   .queue ol { list-style: none; margin: 0 0 6px; padding: 0; }
   .queue li button { width: 100%; text-align: left; background: none; border: 0; padding: 8px 10px; border-radius: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .queue li button:hover { background: var(--soft); }
-  .queue li[aria-current] button { background: #f4f2ff; color: var(--accent); font-weight: 600; }
+  .queue li[aria-current] button { background: var(--soft); color: var(--accent); font-weight: 600; }
+  .btn-ghost { margin-left: 8px; background: var(--soft); border: 1px solid var(--line); padding: 11px 20px; border-radius: 999px; font-weight: 600; }
+  .btn-ghost:hover { background: var(--line); }
+  .help { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 6; width: min(380px, calc(100% - 32px)); background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; backdrop-filter: blur(18px); box-shadow: 0 24px 80px rgba(0, 0, 0, .2); }
+  .help[hidden] { display: none; }
+  .help h2 { margin: 0 0 12px; font-size: 16px; letter-spacing: -0.01em; }
+  .help dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; font-size: 14px; }
+  .help dt { font-weight: 600; color: var(--accent); }
+  .help dd { margin: 0; color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+  }
 </style>
 </head>
 <body>
   <header class="top">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 16s4-7 11-7 11 7 11 7-4 7-11 7S5 16 5 16Z" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="16" r="3.3" fill="#9ff4dc"/></svg></span>
+    <div>
       <span>Soundsight</span>
     </div>
     <div class="modes" role="group" aria-label="Visual style">
@@ -147,6 +166,7 @@
       <button type="button" data-mode="wave" aria-pressed="false">Wave</button>
       <button type="button" data-mode="blob" aria-pressed="false">Blob</button>
       <button type="button" data-mode="radial" aria-pressed="false">Radial</button>
+      <button type="button" data-mode="stars" aria-pressed="false">Stars</button>
     </div>
   </header>
 
@@ -154,13 +174,30 @@
     <canvas id="viz" aria-label="Frequency bars that move with the music" role="img"></canvas>
     <section class="drop" id="drop">
       <h1>Drop songs here</h1>
-      <p>MP3, WAV, M4A or OGG. It plays right in your browser and never gets uploaded.</p>
+      <p>Turn your favorite tracks into living color. Your audio stays right here in your browser.</p>
       <button class="btn-primary" id="pick" type="button">Choose a file</button>
+      <button class="btn-ghost" id="micStart" type="button">Use microphone</button>
       <p class="error" id="error" role="alert"></p>
     </section>
     <aside class="queue" id="queue" hidden aria-label="Queue">
       <ol id="qlist"></ol>
       <button class="tool" id="qadd" type="button">Add songs</button>
+    </aside>
+    <aside class="help" id="helpPanel" hidden aria-label="Keyboard shortcuts">
+      <h2>Keyboard shortcuts</h2>
+      <dl>
+        <dt>Space</dt><dd>Play or pause</dd>
+        <dt>← →</dt><dd>Seek 5 seconds</dd>
+        <dt>↑ ↓</dt><dd>Volume</dd>
+        <dt>M</dt><dd>Mute</dd>
+        <dt>N / P</dt><dd>Next or previous song</dd>
+        <dt>1 – 5</dt><dd>Switch visual style</dd>
+        <dt>A</dt><dd>Auto-cycle styles every 15 seconds</dd>
+        <dt>T</dt><dd>Next color theme</dd>
+        <dt>S</dt><dd>Save a snapshot as PNG</dd>
+        <dt>F</dt><dd>Fullscreen</dd>
+        <dt>?</dt><dd>Show or hide this panel</dd>
+      </dl>
     </aside>
   </main>
 
@@ -186,7 +223,12 @@
       <button class="tool" id="spd" type="button" aria-label="Playback speed">1×</button>
       <label class="vol">Vol <input type="range" id="vol" min="0" max="100" value="100" aria-label="Volume"></label>
       <span class="grow"></span>
-      <button class="tool" id="theme" type="button" aria-label="Color theme">Aurora</button>
+      <button class="tool" id="mic" type="button" aria-pressed="false">Mic</button>
+      <button class="tool" id="auto" type="button" aria-pressed="false">Auto</button>
+      <button class="tool" id="snap" type="button">Snapshot</button>
+      <button class="tool" id="help" type="button" aria-expanded="false" aria-label="Keyboard shortcuts">?</button>
+      <button class="tool" id="theme" type="button" aria-label="Color theme">Daylight</button>
+      <button class="tool" id="glow" type="button" aria-pressed="true">Glow</button>
       <button class="tool" id="fs" type="button">Fullscreen</button>
       <button class="tool" id="qbtn" type="button" aria-expanded="false">Queue (0)</button>
     </div>
@@ -244,10 +286,16 @@
   resetLevels();
 
   /* ---------- Beat detection + extra visual styles ---------- */
-  var mode = "bars", wave = null, bassVal = 0, bassAvg = 0, beat = 0, lastBeat = 0, rot = 0, rings = [];
+  var mode = "bars", wave = null, bassVal = 0, bassAvg = 0, beat = 0, lastBeat = 0, rot = 0, rings = [], glowOn = true;
 
-  var themes = [["Aurora", 250, 125], ["Ocean", 150, 100], ["Sunset", 340, 80], ["Ember", 0, 55]], themeIdx = 0;
-  function hueOf(t) { var th = themes[themeIdx]; return (th[1] + t * th[2] + 360) % 360; }
+  var themes = [
+    { name: "Aurora", hue: 250, span: 125, scheme: "dark", bg: "#090b18", ink: "#f3f2ff", muted: "#a5a6bf", line: "rgba(192,190,255,.16)", soft: "rgba(192,190,255,.09)", accent: "#8c7bff", panel: "rgba(17,19,39,.78)", glowA: "rgba(110,76,255,.18)", glowB: "rgba(47,215,204,.1)" },
+    { name: "Ocean", hue: 175, span: 105, scheme: "dark", bg: "#07131c", ink: "#e8faff", muted: "#9cb9c5", line: "rgba(122,216,230,.17)", soft: "rgba(122,216,230,.09)", accent: "#22bec9", panel: "rgba(10,32,43,.8)", glowA: "rgba(0,171,205,.2)", glowB: "rgba(43,110,255,.13)" },
+    { name: "Sunset", hue: 325, span: 90, scheme: "dark", bg: "#170d1c", ink: "#fff0f3", muted: "#c2a6b5", line: "rgba(255,168,198,.17)", soft: "rgba(255,168,198,.09)", accent: "#f06caa", panel: "rgba(42,19,38,.8)", glowA: "rgba(229,69,139,.2)", glowB: "rgba(255,143,81,.12)" },
+    { name: "Ember", hue: 8, span: 65, scheme: "dark", bg: "#180e0a", ink: "#fff4e9", muted: "#c4aa96", line: "rgba(255,181,128,.18)", soft: "rgba(255,181,128,.09)", accent: "#ff8b45", panel: "rgba(43,24,15,.82)", glowA: "rgba(255,94,46,.19)", glowB: "rgba(255,187,69,.1)" },
+    { name: "Daylight", hue: 245, span: 120, scheme: "light", bg: "#f3f4fb", ink: "#1c1d2b", muted: "#686b7d", line: "rgba(43,45,76,.15)", soft: "rgba(43,45,76,.07)", accent: "#5d49db", panel: "rgba(255,255,255,.84)", glowA: "rgba(128,103,255,.14)", glowB: "rgba(69,195,192,.11)" }
+  ], themeIdx = 0;
+  function hueOf(t) { var th = themes[themeIdx]; return (th.hue + t * th.span + 360) % 360; }
   function hsl(t, a) {
     return "hsl(" + hueOf(t) + " 85% 58%" + (a == null ? "" : " / " + a) + ")";
   }
@@ -276,7 +324,7 @@
     }
   }
 
-  var waveSm = new Float32Array(160), waveYs = new Float32Array(160), wavePeak = 0.3;
+  var WN = 160, waveEnv = new Float32Array(WN), waveAmp = new Float32Array(WN), waveYs = new Float32Array(WN), wavePhase = 0;
   var rpk = new Float32Array(64), nrm = new Float32Array(64);
 
   // Give every band its own loudness scale so each one uses its full range.
@@ -287,58 +335,120 @@
       nrm[i] = Math.min(1, levels[i] / rpk[i]);
     }
   }
-  var lobes = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], spin = 0, pump = 0;
+  var lobes = [], ghost = [], spin = 0, pump = 0, LN = 16, LG = 8;
+  for (var li = 0; li < LN; li++) { lobes.push(0); ghost.push(0); }
 
-  // Smooth wave: average the raw samples down to 160 points, ease them over time,
-  // auto-scale to the loudness, fade the ends to a flat line, and draw with curves.
+  function wavePath(ys, w) {
+    var n = ys.length, p;
+    g.beginPath();
+    g.moveTo(0, ys[0]);
+    for (p = 1; p < n - 1; p++) {
+      var x1 = p / (n - 1) * w, x2 = (p + 1) / (n - 1) * w;
+      g.quadraticCurveTo(x1, ys[p], (x1 + x2) / 2, (ys[p] + ys[p + 1]) / 2);
+    }
+    g.lineTo(w, ys[n - 1]);
+  }
+
+  // Wave: a flowing ribbon, not a raw oscilloscope trace. Raw audio samples flip
+  // direction thousands of times a second, which is what made it jumpy. Here every
+  // stretch of the line is driven by its own slice of the spectrum (bass on the left,
+  // treble on the right, same colors as the bars), eased in time and space, and the
+  // ripple travels along the line. No fill underneath, just the line and its glow.
+  var waveLayers = [
+    { c: 1,   ph: 0,   dir: 1,  s: 1,    lw: 3,   a: 1 },
+    { c: 1.6, ph: 2.1, dir: -1, s: 0.6,  lw: 2,   a: 0.5 },
+    { c: 0.7, ph: 4.2, dir: 1,  s: 0.45, lw: 2,   a: 0.3 }
+  ];
   function drawWave(w, h) {
-    var n = 160, mid = h / 2 - 10, amp = h * 0.3 * (1 + beat * 0.2), p, q;
-    var seg = 0;
-    if (ctx) {
-      if (!wave || wave.length !== analyser.fftSize) wave = new Uint8Array(analyser.fftSize);
-      analyser.getByteTimeDomainData(wave);
-      seg = Math.floor(wave.length / n);
-    }
-    var pk = 0;
+    var n = WN, mid = h / 2 - 10, amp = h * 0.26 * (1 + beat * 0.1), p, k, L, e = 0;
+    for (k = 0; k < barCount; k++) e += nrm[k];
+    e /= barCount;
+    wavePhase += 0.025 + e * 0.05 + beat * 0.05;
+    var cycles = w < 520 ? 2 : 3;
+
     for (p = 0; p < n; p++) {
-      var v = 0;
-      if (seg) { var s = 0; for (q = 0; q < seg; q++) s += wave[p * seg + q] - 128; v = s / seg / 128; }
-      waveSm[p] += (v - waveSm[p]) * 0.3;
-      pk = Math.max(pk, Math.abs(waveSm[p]));
+      var pos = p / (n - 1) * (barCount - 1), i0 = Math.floor(pos), i1 = Math.min(barCount - 1, i0 + 1), f = pos - i0;
+      var tg = nrm[i0] * (1 - f) + nrm[i1] * f;
+      waveEnv[p] += (tg - waveEnv[p]) * (tg > waveEnv[p] ? 0.3 : 0.1);
     }
-    wavePeak += (pk - wavePeak) * (pk > wavePeak ? 0.2 : 0.02);
-    var gain = 1 / Math.max(0.15, wavePeak);
     for (p = 0; p < n; p++) {
-      var win = Math.pow(Math.sin(Math.PI * p / (n - 1)), 0.7);
-      waveYs[p] = mid + Math.max(-1, Math.min(1, waveSm[p] * gain)) * amp * win;
+      var a0 = waveEnv[Math.max(0, p - 1)], a2 = waveEnv[Math.min(n - 1, p + 1)];
+      waveAmp[p] = (a0 + waveEnv[p] * 2 + a2) / 4;
     }
-    var grad = g.createLinearGradient(0, 0, w, 0);
-    grad.addColorStop(0, hsl(0)); grad.addColorStop(0.5, hsl(0.5)); grad.addColorStop(1, hsl(1));
+
+    var grad = g.createLinearGradient(0, 0, w, 0), s;
+    for (s = 0; s <= 8; s++) grad.addColorStop(s / 8, hsl(s / 8));
     g.lineJoin = "round"; g.lineCap = "round"; g.strokeStyle = grad;
-    for (var pass = 0; pass < 2; pass++) {
-      g.globalAlpha = pass ? 1 : 0.14;
-      g.lineWidth = pass ? 3 + beat * 2 : 12;
-      g.beginPath();
-      g.moveTo(0, waveYs[0]);
-      for (p = 1; p < n - 1; p++) {
-        var x1 = p / (n - 1) * w, x2 = (p + 1) / (n - 1) * w;
-        g.quadraticCurveTo(x1, waveYs[p], (x1 + x2) / 2, (waveYs[p] + waveYs[p + 1]) / 2);
+
+    for (L = waveLayers.length - 1; L >= 0; L--) {
+      var lay = waveLayers[L];
+      for (p = 0; p < n; p++) {
+        var t = p / (n - 1), taper = Math.pow(Math.sin(Math.PI * t), 0.7);
+        var ang = t * Math.PI * 2 * cycles * lay.c + wavePhase * lay.dir + lay.ph;
+        var shape = (Math.sin(ang) + 0.3 * Math.sin(ang * 2.1 + wavePhase * 0.7)) / 1.3;
+        waveYs[p] = mid + shape * (0.05 + 0.95 * waveAmp[p]) * amp * lay.s * taper;
       }
-      g.lineTo(w, waveYs[n - 1]);
-      g.stroke();
+      wavePath(waveYs, w);
+      if (L === 0) {
+        g.shadowColor = hsl(0.5, 0.7); g.shadowBlur = glowOn ? 22 : 0;
+        g.globalAlpha = 0.14; g.lineWidth = 12; g.stroke();
+        g.globalAlpha = 1; g.lineWidth = lay.lw + beat * 2; g.stroke();
+        g.shadowBlur = 0;
+      } else {
+        g.globalAlpha = lay.a; g.lineWidth = lay.lw; g.stroke();
+      }
     }
     g.globalAlpha = 1;
   }
 
-  // Blob: 12 control points joined by smooth curves. It swells and punches on every
-  // beat, spins faster when the music is busy, and each lobe stretches out with its
-  // own slice of the spectrum.
+  // Blob: 16 control points joined by smooth curves. It swells on every beat, spins
+  // faster when the music is busy, and each lobe stretches with its own slice of the
+  // spectrum. Colors are painted around the blob by lobe, so it carries the same
+  // per-band hues as the bars and ring, and a slow-falling outline trails behind it
+  // like the peak caps on the bars.
+  function blobPts(arr, R, now) {
+    var P = [], i;
+    for (i = 0; i < LN; i++) {
+      var a = i / LN * Math.PI * 2 + spin;
+      var r = R * (1 + arr[i] * 0.9 + Math.sin(now / 600 + i * 1.9) * 0.07 + Math.sin(now / 950 - i * 2.7) * 0.05);
+      P.push([bx + Math.cos(a) * r, by + Math.sin(a) * r]);
+    }
+    return P;
+  }
+  var bx = 0, by = 0;
+  function traceBlob(P) {
+    var N = P.length;
+    g.beginPath();
+    g.moveTo(P[0][0], P[0][1]);
+    for (var k = 0; k < N; k++) {
+      var p0 = P[(k + N - 1) % N], p1 = P[k], p2 = P[(k + 1) % N], p3 = P[(k + 2) % N];
+      g.bezierCurveTo(p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6,
+                      p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6, p2[0], p2[1]);
+    }
+    g.closePath();
+  }
+  function blobPaint(R, alpha) {
+    var cg, i, gi;
+    if (g.createConicGradient) {
+      cg = g.createConicGradient(spin, bx, by);
+      for (i = 0; i <= LN; i++) {
+        gi = i < LG ? i : LN - 1 - i;
+        cg.addColorStop(i / LN, hsl(Math.max(0, Math.min(1, gi / (LG - 1))), alpha));
+      }
+    } else {
+      cg = g.createRadialGradient(bx - R * 0.3, by - R * 0.35, R * 0.1, bx, by, R * 1.5);
+      cg.addColorStop(0, hsl(1, alpha)); cg.addColorStop(0.5, hsl(0.5, alpha)); cg.addColorStop(1, hsl(0, alpha));
+    }
+    return cg;
+  }
+
   function drawBlob(w, h, now) {
-    var cx = w / 2, cy = h / 2 - 10, N = 12, G = 6, i, j, e = 0;
-    var per = Math.floor(barCount * 0.8 / G);
+    var N = LN, G = LG, i, j, e = 0;
+    bx = w / 2; by = h / 2 - 10;
+    var per = Math.max(1, Math.floor(barCount * 0.8 / G));
     for (i = 0; i < barCount; i++) e += nrm[i];
     e /= barCount;
-    spin += 0.003 + e * 0.025 + beat * 0.03;
+    spin += 0.003 + e * 0.02 + beat * 0.025;
     pump += (Math.max(e, beat * 0.9) - pump) * 0.3;
     var R = Math.min(w, h) * 0.16 * (1 + pump * 0.7);
     for (i = 0; i < N; i++) {
@@ -346,29 +456,27 @@
       for (j = 0; j < per; j++) s += nrm[gi * per + j];
       var tg = Math.min(1, s / per * 1.4);
       lobes[i] += (tg - lobes[i]) * (tg > lobes[i] ? 0.4 : 0.12);
+      if (lobes[i] >= ghost[i]) ghost[i] = lobes[i];
+      else ghost[i] = Math.max(lobes[i], ghost[i] - 0.008);
     }
-    drawRings(cx, cy, R);
-    var P = [];
-    for (i = 0; i < N; i++) {
-      var a = i / N * Math.PI * 2 + spin;
-      var r = R * (1 + lobes[i] * 1.0 + Math.sin(now / 600 + i * 1.9) * 0.07 + Math.sin(now / 950 - i * 2.7) * 0.05);
-      P.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
-    }
-    function trace() {
-      g.beginPath();
-      g.moveTo(P[0][0], P[0][1]);
-      for (var k = 0; k < N; k++) {
-        var p0 = P[(k + N - 1) % N], p1 = P[k], p2 = P[(k + 1) % N], p3 = P[(k + 2) % N];
-        g.bezierCurveTo(p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6,
-                        p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6, p2[0], p2[1]);
-      }
-      g.closePath();
-    }
-    var grad = g.createRadialGradient(cx - R * 0.3, cy - R * 0.35, R * 0.1, cx, cy, R * 1.35);
-    grad.addColorStop(0, hsl(1)); grad.addColorStop(0.5, hsl(0.55)); grad.addColorStop(1, hsl(0.05));
-    g.shadowColor = hsl(0.5, 0.35); g.shadowBlur = 40;
-    g.fillStyle = grad; trace(); g.fill();
+    drawRings(bx, by, R);
+
+    var body = blobPts(lobes, R, now), echo = blobPts(ghost, R * 1.06, now);
+    g.lineJoin = "round"; g.lineWidth = 2.5;
+    g.strokeStyle = blobPaint(R, 0.35); traceBlob(echo); g.stroke();
+
+    g.shadowColor = hsl(0.5, 0.45); g.shadowBlur = glowOn ? 40 : 0;
+    g.fillStyle = blobPaint(R, 1); traceBlob(body); g.fill();
     g.shadowBlur = 0;
+
+    g.save();
+    traceBlob(body); g.clip();
+    var gl = g.createRadialGradient(bx - R * 0.35, by - R * 0.45, R * 0.05, bx, by, R * 1.6);
+    gl.addColorStop(0, "rgba(255,255,255,.4)");
+    gl.addColorStop(0.45, "rgba(255,255,255,.08)");
+    gl.addColorStop(1, "rgba(0,0,0,.18)");
+    g.fillStyle = gl; g.fillRect(bx - R * 5, by - R * 5, R * 10, R * 10);
+    g.restore();
   }
 
   // Balanced ring: bar lengths follow the music, but the pattern repeats in all four
@@ -379,6 +487,7 @@
     rot += 0.003 + beat * 0.01;
     drawRings(cx, cy, inner);
     g.lineCap = "round"; g.lineWidth = Math.max(3, Math.PI * 2 * inner / total * 0.62);
+    g.shadowColor = hsl(0.5, 0.55); g.shadowBlur = glowOn ? 14 : 0;
     for (i = 0; i < total; i++) {
       var t = Math.abs((i / total * 4) % 2 - 1);               // 0 to 1 and back, four times
       var idx = Math.min(n - 1, Math.floor(t * n));
@@ -391,17 +500,53 @@
       g.lineTo(cx + c * (inner + len), cy + sn * (inner + len));
       g.stroke();
     }
+    g.shadowBlur = 0;
   }
 
-  var drawers = { wave: drawWave, blob: drawBlob, radial: drawRadial };
+  // Stars: a starfield flying at you. Overall energy sets the speed and the star count,
+  // every beat throws a burst of new stars, and each star keeps the hue of the band it was born from.
+  var stars = [];
+  function spawnStar(burst) {
+    stars.push({ a: Math.random() * Math.PI * 2, d: burst ? 0.02 + Math.random() * 0.08 : Math.random() * 0.2,
+      v: 0.002 + Math.random() * 0.004, t: Math.random(), s: 1 + Math.random() * 1.8 });
+  }
+  function drawStars(w, h) {
+    var cx = w / 2, cy = h / 2 - 10, R = Math.hypot(w, h) / 2, e = 0, i;
+    for (i = 0; i < barCount; i++) e += nrm[i];
+    e /= barCount;
+    var want = 60 + Math.round(e * 220);
+    if (beat > 0.95) for (i = 0; i < 28; i++) spawnStar(true);
+    while (stars.length < want) spawnStar(false);
+    g.lineCap = "round"; g.shadowColor = hsl(0.5, 0.55); g.shadowBlur = glowOn ? 10 : 0;
+    for (i = stars.length - 1; i >= 0; i--) {
+      var st = stars[i], prev = st.d;
+      st.d += st.v * (1 + e * 5 + beat * 3) * (0.4 + st.d * 3);
+      if (st.d > 1) { stars.splice(i, 1); continue; }
+      var dd = st.d - prev, r0 = Math.max(0, st.d - dd * 5) * R, r1 = st.d * R, c = Math.cos(st.a), sn = Math.sin(st.a);
+      g.strokeStyle = hsl(st.t, Math.min(1, st.d * 4));
+      g.lineWidth = st.s * (0.5 + st.d * 2.5);
+      g.beginPath(); g.moveTo(cx + c * r0, cy + sn * r0); g.lineTo(cx + c * r1, cy + sn * r1); g.stroke();
+    }
+    g.shadowBlur = 0;
+  }
+
+  var drawers = { wave: drawWave, blob: drawBlob, radial: drawRadial, stars: drawStars };
+  var autoOn = false, autoAt = 0, modeList = ["bars", "wave", "blob", "radial", "stars"];
   var tabs = document.querySelectorAll(".modes button");
   function setMode(m) {
     mode = m; rings = []; store("mode", m);
+    canvas.setAttribute("aria-label", {
+      bars: "Frequency bars that move with the music",
+      wave: "Audio waveform that moves with the music",
+      blob: "Audio-reactive blob that moves with the music",
+      radial: "Circular frequency bars that move with the music",
+      stars: "Starfield that speeds up with the music"
+    }[m]);
     for (var i = 0; i < tabs.length; i++) tabs[i].setAttribute("aria-pressed", tabs[i].getAttribute("data-mode") === m ? "true" : "false");
   }
   for (var t = 0; t < tabs.length; t++) tabs[t].addEventListener("click", function () { setMode(this.getAttribute("data-mode")); });
   document.addEventListener("keydown", function (e) {
-    var i = "1234".indexOf(e.key);
+    var i = "12345".indexOf(e.key);
     if (i !== -1 && e.target === document.body) setMode(tabs[i].getAttribute("data-mode"));
   });
 
@@ -451,6 +596,7 @@
     }
 
     now = now || 0;
+    if (autoOn && now - autoAt > 15000) { autoAt = now; setMode(modeList[(modeList.indexOf(mode) + 1) % modeList.length]); }
     bassVal = detectBeat(now);
     if (mode !== "bars") { normBands(); drawers[mode](w, h, now); requestAnimationFrame(frame); return; }
 
@@ -459,6 +605,7 @@
     var maxH = Math.max(40, h * 0.72);
     var gap = Math.max(2, w * 0.004);
     var bw = (w - padX * 2 - gap * (barCount - 1)) / barCount;
+    g.shadowColor = hsl(0.5, 0.55); g.shadowBlur = glowOn ? 14 : 0;
 
     for (var j = 0; j < barCount; j++) {
       var t = j / (barCount - 1);
@@ -470,6 +617,7 @@
       g.fillStyle = "hsl(" + hue + " 85% 58% / 0.35)";
       barPath(x, baseY - peaks[j] * maxH - 8, bw, 3, 1.5);
     }
+    g.shadowBlur = 0;
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -497,6 +645,7 @@
   function playAt(i) {
     var t = queue[i];
     if (!t) return;
+    if (micStream) stopMic();
     cur = i; audio.src = t.url; titleEl.textContent = t.name; renderQueue();
     if ("mediaSession" in navigator) { try { navigator.mediaSession.metadata = new MediaMetadata({ title: t.name, artist: "Soundsight" }); } catch (e) {} }
     audio.play().catch(function () {});
@@ -596,11 +745,75 @@
 
   var themeBtn = $("theme");
   function setTheme(i) {
-    themeIdx = i; themeBtn.textContent = themes[i][0];
-    document.documentElement.style.setProperty("--accent", "hsl(" + hueOf(0.3) + " 85% 58%)");
-    store("theme", i);
+    themeIdx = i;
+    var theme = themes[i], root = document.documentElement;
+    themeBtn.textContent = theme.name;
+    root.style.colorScheme = theme.scheme;
+    root.style.setProperty("--bg", theme.bg);
+    root.style.setProperty("--ink", theme.ink);
+    root.style.setProperty("--muted", theme.muted);
+    root.style.setProperty("--line", theme.line);
+    root.style.setProperty("--soft", theme.soft);
+    root.style.setProperty("--accent", theme.accent);
+    root.style.setProperty("--panel", theme.panel);
+    root.style.setProperty("--glow-a", theme.glowA);
+    root.style.setProperty("--glow-b", theme.glowB);
+    store("theme-v2", i);
   }
   themeBtn.addEventListener("click", function () { setTheme((themeIdx + 1) % themes.length); });
+
+  var micBtn = $("mic"), micStream = null, micSrc = null;
+  function stopMic() {
+    if (micSrc) { try { micSrc.disconnect(); } catch (e) {} micSrc = null; }
+    if (micStream) { micStream.getTracks().forEach(function (tr) { tr.stop(); }); micStream = null; }
+    document.body.classList.remove("has-mic");
+    micBtn.setAttribute("aria-pressed", "false");
+  }
+  function toggleMic() {
+    if (micStream) { stopMic(); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { showError("This browser can’t use the microphone."); return; }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      setupAudio(); if (ctx.state === "suspended") ctx.resume();
+      audio.pause();
+      micStream = stream; micSrc = ctx.createMediaStreamSource(stream);
+      micSrc.connect(analyser);               // analyser only, so the mic never plays back through the speakers
+      document.body.classList.add("has-mic");
+      micBtn.setAttribute("aria-pressed", "true");
+      showError("");
+    }).catch(function () { showError("Couldn’t reach the microphone. Check the browser’s permission and try again."); });
+  }
+  micBtn.addEventListener("click", toggleMic);
+  $("micStart").addEventListener("click", toggleMic);
+
+  var autoBtn = $("auto");
+  function setAuto(on) { autoOn = on; autoAt = performance.now(); autoBtn.setAttribute("aria-pressed", String(on)); }
+  autoBtn.addEventListener("click", function () { setAuto(!autoOn); });
+
+  function snap() {
+    var c = document.createElement("canvas"); c.width = canvas.width; c.height = canvas.height;
+    var x = c.getContext("2d");
+    x.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#000";
+    x.fillRect(0, 0, c.width, c.height); x.drawImage(canvas, 0, 0);
+    c.toBlob(function (b) {
+      if (!b) return;
+      var a = document.createElement("a"); a.href = URL.createObjectURL(b);
+      a.download = "soundsight-" + mode + ".png"; a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    });
+  }
+  $("snap").addEventListener("click", snap);
+
+  var helpPanel = $("helpPanel"), helpBtn = $("help");
+  function toggleHelp() { helpPanel.hidden = !helpPanel.hidden; helpBtn.setAttribute("aria-expanded", String(!helpPanel.hidden)); }
+  helpBtn.addEventListener("click", toggleHelp);
+
+  var glowBtn = $("glow");
+  function setGlow(enabled) {
+    glowOn = enabled;
+    glowBtn.setAttribute("aria-pressed", String(glowOn));
+    store("glow", glowOn ? "1" : "0");
+  }
+  glowBtn.addEventListener("click", function () { setGlow(!glowOn); });
 
   var fsBtn = $("fs");
   function toggleFs() {
@@ -622,6 +835,10 @@
     else if (k === "n") step(1);
     else if (k === "p") step(-1);
     else if (k === "t") setTheme((themeIdx + 1) % themes.length);
+    else if (k === "s") snap();
+    else if (k === "a") setAuto(!autoOn);
+    else if (k === "?") toggleHelp();
+    else if (k === "escape" && !helpPanel.hidden) toggleHelp();
   });
 
   if ("mediaSession" in navigator) {
@@ -635,7 +852,8 @@
 
   // Restore saved preferences
   var sv = parseFloat(recall("vol")); if (isFinite(sv)) setVol(Math.max(0, Math.min(1, sv)));
-  var st = parseInt(recall("theme"), 10); setTheme(st >= 0 && st < themes.length ? st : 0);
+  var st = parseInt(recall("theme-v2"), 10); setTheme(st >= 0 && st < themes.length ? st : 4);
+  setGlow(recall("glow") !== "0");
   var sm = recall("mode"); if (sm && (sm === "bars" || drawers[sm])) setMode(sm);
 
   /* ---------- File picking and drag-and-drop ---------- */
