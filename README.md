@@ -29,7 +29,3 @@ A few things go in `localStorage` under keys starting with `ss:`: volume, theme,
 ## Network stuff
 
 It pulls in two things from outside. Instrument Sans comes from Google Fonts, and it falls back to system fonts if that's blocked. jsmediatags 3.9.5 comes from cdnjs and is only used for tags and cover art. Playback and visuals work fine without it.
-
-## License
-
-Not picked yet.
