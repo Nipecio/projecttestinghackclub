@@ -197,9 +197,9 @@
       <img id="artThumb" class="art-thumb" alt="Cover art">
       <span>Soundsight</span>
     </div>
-    <div class=""modes" role="group" aria-label="Visual style">
-      <button type="button" data-mode="bars" aria-pressed=""true">Bars</button>
-      <button type="button" data-mode="wave" aria-pressed="""false">Wave</button>
+    <div class="modes" role="group" aria-label="Visual style">
+      <button type="button" data-mode="bars" aria-pressed="true">Bars</button>
+      <button type="button" data-mode="wave" aria-pressed="false">Wave</button>
       <button type="button" data-mode="blob" aria-pressed="false">Blob</button>
       <button type="button" data-mode="radial" aria-pressed="false">Radial</button>
       <button type="button" data-mode="particles" aria-pressed="false">Particles</button>
@@ -207,48 +207,49 @@
   </header>
 
   <main class="stage" id="stage">
-< / m a i<nc>anvas id="viz" aria-label="Frequency bars that move with the music" role="img"></canvas>
+    <canvas id="viz" aria-label="Frequency bars that move with the music" role="img"></canvas>
     <section class="drop" id="drop">
       <h1>Drop songs here</h1>
       <p>Turn your favorite tracks into living color. Your audio stays right here in your browser.</p>
-      <button class="btn-primary" id="pick" type="button">C<h/oboustet oan >file</button>
-      <button class="btn-ghost" id="""micStart" type="button">Use microphone</button>
-      <p class="error" id="error" role="alert"></p>>
+      <button class="btn-primary" id="pick" type="button">Choose a file</button>
+      <button class="btn-ghost" id="micStart" type="button">Use microphone</button>
+      <p class="error" id="error" role="alert"></p>
     </section>
     <aside class="queue" id="queue" hidden aria-label="Queue">
-      <ol id=""qlist"></ol>
+      <ol id="qlist"></ol>
       <button class="tool" id="qadd" type="button">Add songs</button>
     </aside>
     <aside class="settings-panel" id="settingsPanel" hidden aria-label="Audio Adjustments">
       <h2>Audio Adjustments</h2>
       <div class="setting-row">
-        <label>Sensitivity (Gain) <span id=""gainVal">1.0×</span></label>
+        <label>Sensitivity (Gain) <span id="gainVal">1.0×</span></label>
         <input type="range" id="gainRange" min="0.5" max="3.0" step="0.1" value="1.0">
       </div>
       <div class="setting-row">
-        <label>Smoothing <span id="smoothVal">0.7</span></label>label>
-        <input type="range" id=""smoothRange" min="0.1" max="""0.95" step="0.05" value="0.7">
+        <label>Smoothing <span id="smoothVal">0.7</span></label>
+        <input type="range" id="smoothRange" min="0.1" max="0.95" step="0.05" value="0.7">
       </div>
     </aside>
     <aside class="sleep-panel" id="sleepPanel" hidden aria-label="Sleep timer">
       <h2>Sleep timer</h2>
-      <p>Fade the music out gently, then pause playback.</p>p>
+      <p>Fade the music out gently, then pause playback.</p>
       <div class="sleep-controls">
         <label for="sleepDuration" class="visually-hidden">Timer duration</label>
         <select id="sleepDuration">
-          <option value="15">1<5/ ompitniuotne>s</option>
+          <option value="15">15 minutes</option>
           <option value="30">30 minutes</option>
-          <option value="45">4<5/ ompitniuotne>s</option>
-          <option value="""60">60 minutes</option>
+          <option value="45">45 minutes</option>
+          <option value="60">60 minutes</option>
         </select>
-        <button class="tool" id="sleepStart" type="""button">Start</button>
-        <button class="""tool" id="sleepCancel" type="button" hidden>Cancel</button>
+        <button class="tool" id="sleepStart" type="button">Start</button>
+        <button class="tool" id="sleepCancel" type="button" hidden>Cancel</button>
       </div>
       <p class="sleep-status" id="sleepStatus" aria-live="polite"></p>
     </aside>
-    <aside class="help" id="helpPanel" hidden aria-label="Keyboard shortcuts">< / a s i d e<>h2>Keyboard shortcuts</h2>
+    <aside class="help" id="helpPanel" hidden aria-label="Keyboard shortcuts">
+      <h2>Keyboard shortcuts</h2>
       <dl>
-        <dt>Space</dt><dd>P<l/adyd >or pause</dd>
+        <dt>Space</dt><dd>Play or pause</dd>
         <dt>← →</dt><dd>Seek 5 seconds</dd>
         <dt>↑ ↓</dt><dd>Volume</dd>
         <dt>M</dt><dd>Mute</dd>
@@ -257,7 +258,7 @@
         <dt>5</dt><dd>Switch to Particles</dd>
         <dt>A</dt><dd>Auto-cycle styles every 15 seconds</dd>
         <dt>T</dt><dd>Next color theme</dd>
-        <dt>S</dt><dd>S<a/vded >a snapshot as PNG</dd>
+        <dt>S</dt><dd>Save a snapshot as PNG</dd>
         <dt>F</dt><dd>Fullscreen</dd>
         <dt>?</dt><dd>Show or hide this panel</dd>
       </dl>
@@ -266,51 +267,51 @@
 
   <footer class="player" id="player">
     <button class="play" id="play" type="button" aria-label="Play">
-      <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="""M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
-      <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4.5" height="14" rx="1.2"/><rect x="13.5" y="5" width="""4.5" height="""14" rx="1.2"/></svg>
+      <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+      <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4.5" height="14" rx="1.2"/><rect x="13.5" y="5" width="4.5" height="14" rx="1.2"/></svg>
     </button>
     <div class="meta">
-< / d i v > <div class="title" id="title">N<o/ dsiovn>g loaded</div>
+      <div class="title" id="title">No song loaded</div>
       <div class="artist" id="artist"></div>
-      <div class="""seek-row">
+      <div class="seek-row">
         <span id="cur">0:00</span>
-        <input type="range" id="seek" min="0" max="1000" value="0" step=""1" aria-label="Seek">
+        <input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="Seek">
         <span id="dur">0:00</span>
       </div>
     </div>
-    <button class="change" id="change" type="""button"><h/abnugtet osno>nCgs</button>
-    <div class="""tools" id="toolsRow">
-      <button class=""tool" id="""prev" type="button">Prev</button>
+    <button class="change" id="change" type="button">Change songs</button>
+    <div class="tools" id="toolsRow">
+      <button class="tool" id="prev" type="button">Prev</button>
       <button class="tool" id="next" type="button">Next</button>
-      <button class="tool" id="shuf" type=""button" aria-pressed="false"><h/ubfuftlteo<n/>bSutton>
+      <button class="tool" id="shuf" type="button" aria-pressed="false">Shuffle</button>
       <button class="tool" id="rep" type="button">Repeat: off</button>
-      <button class="tool" id="spd" type="button" aria-label="Playback speed">1<×/<b/ubtuttotno>n>
-      <label class="vol">Vol <input type="range" id="vol" min="""0" max="""100" value="100" aria-label="Volume"></label>
-      <span class="""grow"></span>
-      <button class="tool" id="""auto" type="button" aria-pressed="false">Auto</button>
-      <button class="""tool" id="snap" type="button">Snapshot</button>button>
+      <button class="tool" id="spd" type="button" aria-label="Playback speed">1×</button>
+      <label class="vol">Vol <input type="range" id="vol" min="0" max="100" value="100" aria-label="Volume"></label>
+      <span class="grow"></span>
+      <button class="tool" id="auto" type="button" aria-pressed="false">Auto</button>
+      <button class="tool" id="snap" type="button">Snapshot</button>
       <button class="tool" id="rec" type="button">Record</button>
       <button class="tool" id="adjustBtn" type="button">Adjust</button>
       
       <!-- Overflow menu for mobile viewports -->
       <div class="more-menu">
-        <button class="tool" id="""moreBtn" type="button" aria-expanded="false">More...</button>
-        <div class="""more-dropdown" id="""moreDropdown" hidden>
+        <button class="tool" id="moreBtn" type="button" aria-expanded="false">More...</button>
+        <div class="more-dropdown" id="moreDropdown" hidden>
           <button class="tool" id="theme" type="button">Theme: Daylight</button>
           <button class="tool" id="sleep" type="button" aria-expanded="false">Sleep timer</button>
-          <button class="tool" id="glow" type="""button" aria-pressed="true">Glow</button>
-          <button class=""tool" id="fs" type="button">Fullscreen</button>
-          <button class="tool" id="help" type="""button">Help</button>
-        </div>div>
-      </div>div>
+          <button class="tool" id="glow" type="button" aria-pressed="true">Glow</button>
+          <button class="tool" id="fs" type="button">Fullscreen</button>
+          <button class="tool" id="help" type="button">Help</button>
+        </div>
+      </div>
       
-      <button class="tool" id="qbtn" type="""button" aria-expanded="false">Queue (0)</button>
+      <button class="tool" id="qbtn" type="button" aria-expanded="false">Queue (0)</button>
     </div>
   </footer>
 
   <div class="overlay" id="overlay">Drop to play</div>
-  <audio id="audio" preload="auto"><//aauuddiioo>>
-  <input type="file" id="file" accept="""audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac" multiple hidden>
+  <audio id="audio" preload="auto"></audio>
+  <input type="file" id="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac" multiple hidden>
 
 <script>
 (function () {
@@ -1216,4 +1217,3 @@
 </script>
 </body>
 </html>
-
