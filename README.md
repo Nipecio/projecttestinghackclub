@@ -13,7 +13,7 @@ To use your microphone, allow access when prompted. Depending on your browser, y
 
 ## Features
 
-**Visualizers:** Choose between Bars, Wave, Blob, and Radial.
+**Visualizers:** Choose between Bars, Wave, Blob, Radial, and the audio-reactive Particles constellation.
 
 **Queue:** Add multiple songs, drag to reorder them, or remove tracks whenever you want.
 
@@ -29,9 +29,11 @@ To use your microphone, allow access when prompted. Depending on your browser, y
 
 **Playback:** Shuffle tracks, repeat songs, change playback speed, seek through audio, and adjust volume.
 
+**Sleep timer:** Choose a 15-, 30-, 45-, or 60-minute timer. Soundsight fades the volume during the final 30 seconds and then pauses playback.
+
 ## Keyboard Shortcuts
 
-Press `1`, `2`, `3`, or `4` to switch between Bars, Wave, Blob, and Radial. The page needs to be focused for these shortcuts to work.
+Press `1` through `5` to switch between Bars, Wave, Blob, Radial, and Particles. The page needs to be focused for these shortcuts to work.
 
 ## Privacy
 

@@ -41,6 +41,7 @@
   }
   button { font: inherit; color: inherit; cursor: pointer; }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
   header { padding: 20px 28px 0; font-weight: 700; font-size: 18px; letter-spacing: -0.01em; display: flex; align-items: center; gap: 16px; }
   .art-thumb { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; background: var(--soft); display: none; }
@@ -168,6 +169,14 @@
   .setting-row { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
   .setting-row label { display: flex; justify-content: space-between; font-weight: 600; color: var(--ink); }
 
+  .sleep-panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 6; width: min(340px, calc(100% - 32px)); background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; backdrop-filter: blur(18px); box-shadow: 0 24px 80px rgba(0, 0, 0, .2); }
+  .sleep-panel[hidden] { display: none; }
+  .sleep-panel h2 { margin: 0 0 6px; font-size: 16px; }
+  .sleep-panel p { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+  .sleep-controls { display: flex; gap: 8px; }
+  .sleep-controls select { min-width: 0; flex: 1; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; font: inherit; }
+  .sleep-status { min-height: 1.5em; margin: 12px 0 0 !important; font-variant-numeric: tabular-nums; }
+
   .help { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 6; width: min(380px, calc(100% - 32px)); background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; backdrop-filter: blur(18px); box-shadow: 0 24px 80px rgba(0, 0, 0, .2); }
   .help[hidden] { display: none; }
   .help h2 { margin: 0 0 12px; font-size: 16px; letter-spacing: -0.01em; }
@@ -193,6 +202,7 @@
       <button type="button" data-mode="wave" aria-pressed="false">Wave</button>
       <button type="button" data-mode="blob" aria-pressed="false">Blob</button>
       <button type="button" data-mode="radial" aria-pressed="false">Radial</button>
+      <button type="button" data-mode="particles" aria-pressed="false">Particles</button>
     </div>
   </header>
 
@@ -220,6 +230,22 @@
         <input type="range" id="smoothRange" min="0.1" max="0.95" step="0.05" value="0.7">
       </div>
     </aside>
+    <aside class="sleep-panel" id="sleepPanel" hidden aria-label="Sleep timer">
+      <h2>Sleep timer</h2>
+      <p>Fade the music out gently, then pause playback.</p>
+      <div class="sleep-controls">
+        <label for="sleepDuration" class="visually-hidden">Timer duration</label>
+        <select id="sleepDuration">
+          <option value="15">15 minutes</option>
+          <option value="30">30 minutes</option>
+          <option value="45">45 minutes</option>
+          <option value="60">60 minutes</option>
+        </select>
+        <button class="tool" id="sleepStart" type="button">Start</button>
+        <button class="tool" id="sleepCancel" type="button" hidden>Cancel</button>
+      </div>
+      <p class="sleep-status" id="sleepStatus" aria-live="polite"></p>
+    </aside>
     <aside class="help" id="helpPanel" hidden aria-label="Keyboard shortcuts">
       <h2>Keyboard shortcuts</h2>
       <dl>
@@ -228,7 +254,8 @@
         <dt>↑ ↓</dt><dd>Volume</dd>
         <dt>M</dt><dd>Mute</dd>
         <dt>N / P</dt><dd>Next or previous song</dd>
-        <dt>1 – 4</dt><dd>Switch visual style</dd>
+        <dt>1 – 4</dt><dd>Bars, Wave, Blob, or Radial</dd>
+        <dt>5</dt><dd>Switch to Particles</dd>
         <dt>A</dt><dd>Auto-cycle styles every 15 seconds</dd>
         <dt>T</dt><dd>Next color theme</dd>
         <dt>S</dt><dd>Save a snapshot as PNG</dd>
@@ -271,6 +298,7 @@
         <button class="tool" id="moreBtn" type="button" aria-expanded="false">More...</button>
         <div class="more-dropdown" id="moreDropdown" hidden>
           <button class="tool" id="theme" type="button">Theme: Daylight</button>
+          <button class="tool" id="sleep" type="button" aria-expanded="false">Sleep timer</button>
           <button class="tool" id="glow" type="button" aria-pressed="true">Glow</button>
           <button class="tool" id="fs" type="button">Fullscreen</button>
           <button class="tool" id="help" type="button">Help</button>
@@ -519,8 +547,52 @@
     }
   }
 
-  var drawers = { wave: drawWave, blob: drawBlob, radial: drawRadial };
-  var autoOn = false, autoAt = 0, modeList = ["bars", "wave", "blob", "radial"];
+  var particles = [];
+  for (var pi = 0; pi < 76; pi++) {
+    particles.push({
+      x: Math.random(), y: Math.random(),
+      vx: (Math.random() - 0.5) * 0.00014,
+      vy: (Math.random() - 0.5) * 0.00014,
+      band: pi % 64
+    });
+  }
+  function drawParticles(w, h, now) {
+    kickFlash(w, h);
+    var reach = Math.min(130, Math.max(72, w * 0.14));
+    var points = [];
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      p.x += p.vx * (1 + bassNow * 3);
+      p.y += p.vy * (1 + bassNow * 3);
+      if (p.x < 0 || p.x > 1) p.vx *= -1;
+      if (p.y < 0 || p.y > 1) p.vy *= -1;
+      var level = levels[Math.floor(p.band / 64 * barCount)] || 0;
+      points.push({ x: p.x * w, y: p.y * h, level: level, band: p.band });
+    }
+    g.lineWidth = 1;
+    for (var a = 0; a < points.length; a++) {
+      var point = points[a];
+      for (var b = a + 1; b < points.length; b++) {
+        var other = points[b], dx = point.x - other.x, dy = point.y - other.y;
+        var distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < reach) {
+          var energy = (point.level + other.level) * 0.5;
+          g.strokeStyle = hsl(point.band / 64, (1 - distance / reach) * (0.14 + energy * 0.6));
+          g.beginPath(); g.moveTo(point.x, point.y); g.lineTo(other.x, other.y); g.stroke();
+        }
+      }
+      var radius = 1.2 + point.level * 4;
+      g.fillStyle = hsl(point.band / 64, 0.45 + point.level * 0.5);
+      g.beginPath(); g.arc(point.x, point.y, radius, 0, Math.PI * 2); g.fill();
+    }
+    if (kick > 0.1) {
+      g.fillStyle = hsl((now / 12000) % 1, kick * 0.12);
+      g.fillRect(0, 0, w, h);
+    }
+  }
+
+  var drawers = { wave: drawWave, blob: drawBlob, radial: drawRadial, particles: drawParticles };
+  var autoOn = false, autoAt = 0, modeList = ["bars", "wave", "blob", "radial", "particles"];
   var tabs = document.querySelectorAll(".modes button");
 
   function setMode(m) {
@@ -529,14 +601,15 @@
       bars: "Frequency bars that move with the music",
       wave: "Audio waveform that moves with the music",
       blob: "Audio-reactive blob that moves with the music",
-      radial: "Circular frequency bars that move with the music"
+      radial: "Circular frequency bars that move with the music",
+      particles: "Audio-reactive particle constellation that moves with the music"
     }[m]);
     for (var i = 0; i < tabs.length; i++) tabs[i].setAttribute("aria-pressed", tabs[i].getAttribute("data-mode") === m ? "true" : "false");
   }
   for (var t = 0; t < tabs.length; t++) tabs[t].addEventListener("click", function () { setMode(this.getAttribute("data-mode")); });
 
   document.addEventListener("keydown", function (e) {
-    var i = "1234".indexOf(e.key);
+    var i = "12345".indexOf(e.key);
     if (i !== -1 && e.target === document.body) setMode(tabs[i].getAttribute("data-mode"));
   });
 
@@ -618,6 +691,9 @@
   /* ---------- Queue & Persistence ---------- */
   var queue = [], cur = -1, appendNext = false, shuffleOn = false, repeatMode = 0;
   var qlist = $("qlist"), qbtn = $("qbtn");
+  var sleepPanel = $("sleepPanel"), sleepBtn = $("sleep"), sleepStart = $("sleepStart");
+  var sleepCancel = $("sleepCancel"), sleepDuration = $("sleepDuration"), sleepStatus = $("sleepStatus");
+  var sleepInterval = null, sleepEndsAt = 0, sleepBaseVolume = 1;
 
   function store(k, v) { try { localStorage.setItem("ss:" + k, v); } catch (e) {} }
   function recall(k) { try { return localStorage.getItem("ss:" + k); } catch (e) { return null; } }
@@ -826,7 +902,11 @@
   var vol = $("vol"), lastVol = 1, speeds = [0.75, 1, 1.25, 1.5, 2], si = 1;
   function setVol(v) { audio.volume = v; vol.value = Math.round(v * 100); store("vol", v); }
   function toggleMute() { if (audio.volume > 0) { lastVol = audio.volume; setVol(0); } else setVol(lastVol || 1); }
-  vol.addEventListener("input", function () { audio.volume = vol.value / 100; store("vol", audio.volume); });
+  vol.addEventListener("input", function () {
+    if (sleepInterval) sleepBaseVolume = vol.value / 100;
+    audio.volume = vol.value / 100;
+    store("vol", audio.volume);
+  });
 
   $("prev").addEventListener("click", function () { if (audio.currentTime > 3) audio.currentTime = 0; else step(-1); });
   $("next").addEventListener("click", function () { step(1); });
@@ -852,6 +932,8 @@
     $("adjustBtn").setAttribute("aria-expanded", "false");
     helpPanel.hidden = true;
     helpBtn.setAttribute("aria-expanded", "false");
+    sleepPanel.hidden = true;
+    sleepBtn.setAttribute("aria-expanded", "false");
   });
   $("qadd").addEventListener("click", function () { openPicker(true); });
 
@@ -884,6 +966,8 @@
     qbtn.setAttribute("aria-expanded", "false");
     helpPanel.hidden = true;
     helpBtn.setAttribute("aria-expanded", "false");
+    sleepPanel.hidden = true;
+    sleepBtn.setAttribute("aria-expanded", "false");
   });
 
   $("gainRange").addEventListener("input", function() {
@@ -977,6 +1061,8 @@
     adjustBtn.setAttribute("aria-expanded", "false");
     moreDropdown.hidden = true;
     moreBtn.setAttribute("aria-expanded", "false");
+    sleepPanel.hidden = true;
+    sleepBtn.setAttribute("aria-expanded", "false");
   }
   helpBtn.addEventListener("click", toggleHelp);
 
@@ -1006,6 +1092,60 @@
     adjustBtn.setAttribute("aria-expanded", "false");
     helpPanel.hidden = true;
     helpBtn.setAttribute("aria-expanded", "false");
+    sleepPanel.hidden = true;
+    sleepBtn.setAttribute("aria-expanded", "false");
+  });
+
+  function updateSleepTimer() {
+    var remaining = Math.max(0, Math.ceil((sleepEndsAt - Date.now()) / 1000));
+    if (remaining === 0) {
+      clearInterval(sleepInterval);
+      sleepInterval = null;
+      audio.pause();
+      audio.volume = sleepBaseVolume;
+      vol.value = Math.round(sleepBaseVolume * 100);
+      sleepStatus.textContent = "Timer finished — playback paused.";
+      sleepStart.disabled = false;
+      sleepCancel.hidden = true;
+      return;
+    }
+    var fade = remaining <= 30 ? remaining / 30 : 1;
+    audio.volume = sleepBaseVolume * fade;
+    vol.value = Math.round(audio.volume * 100);
+    sleepStatus.textContent = remaining <= 30
+      ? "Fading out — " + fmt(remaining) + " remaining"
+      : "Pauses in " + fmt(remaining);
+  }
+
+  sleepBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    sleepPanel.hidden = !sleepPanel.hidden;
+    sleepBtn.setAttribute("aria-expanded", String(!sleepPanel.hidden));
+    moreDropdown.hidden = true;
+    moreBtn.setAttribute("aria-expanded", "false");
+    qpanel.hidden = true;
+    qbtn.setAttribute("aria-expanded", "false");
+    settingsPanel.hidden = true;
+    adjustBtn.setAttribute("aria-expanded", "false");
+    helpPanel.hidden = true;
+    helpBtn.setAttribute("aria-expanded", "false");
+  });
+  sleepStart.addEventListener("click", function () {
+    sleepBaseVolume = audio.volume;
+    sleepEndsAt = Date.now() + parseInt(sleepDuration.value, 10) * 60 * 1000;
+    sleepStart.disabled = true;
+    sleepCancel.hidden = false;
+    updateSleepTimer();
+    sleepInterval = window.setInterval(updateSleepTimer, 1000);
+  });
+  sleepCancel.addEventListener("click", function () {
+    clearInterval(sleepInterval);
+    sleepInterval = null;
+    audio.volume = sleepBaseVolume;
+    vol.value = Math.round(sleepBaseVolume * 100);
+    sleepStart.disabled = false;
+    sleepCancel.hidden = true;
+    sleepStatus.textContent = "Timer canceled.";
   });
 
   /* Global click listener to close panels when clicking off */
@@ -1025,6 +1165,10 @@
     if (!moreDropdown.contains(e.target) && !moreBtn.contains(e.target)) {
       moreDropdown.hidden = true;
       moreBtn.setAttribute("aria-expanded", "false");
+    }
+    if (!sleepPanel.contains(e.target) && !sleepBtn.contains(e.target)) {
+      sleepPanel.hidden = true;
+      sleepBtn.setAttribute("aria-expanded", "false");
     }
   });
 
