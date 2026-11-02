@@ -189,6 +189,142 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
   }
+
+  body {
+    background: var(--bg);
+    font-family: "Comic Sans MS", "Trebuchet MS", system-ui, sans-serif;
+  }
+  header.top {
+    padding: 14px 20px;
+    background: var(--soft);
+    border-bottom: 3px dashed var(--accent);
+  }
+  header.top > div:first-child span {
+    font-size: 23px;
+    text-decoration: underline wavy #ef6c43;
+    text-underline-offset: 4px;
+  }
+  .stage::before {
+    opacity: .2;
+    background-size: 32px 32px;
+    mask-image: none;
+  }
+  .drop {
+    background: var(--panel);
+    border: 3px dashed var(--accent);
+    border-radius: 7px 18px 5px 14px;
+    box-shadow: 7px 7px 0 rgba(239, 108, 67, .35);
+    backdrop-filter: none;
+  }
+  .drop h1 { text-shadow: 2px 2px 0 rgba(255, 220, 80, .7); }
+  .drop.is-over { transform: translate(-50%, -50%) scale(1.02); }
+  .btn-primary, .btn-ghost, .change, .tool {
+    border-radius: 5px;
+    box-shadow: 3px 3px 0 rgba(25, 30, 60, .22);
+    font-family: inherit;
+  }
+  .btn-primary { background: #ed684d; }
+  .btn-ghost { background: #ffe36b; border: 2px solid #433e55; }
+  .modes {
+    gap: 4px;
+    padding: 4px;
+    background: #ffe36b;
+    border: 2px solid #433e55;
+    border-radius: 6px;
+  }
+  .modes button { border-radius: 4px; }
+  .modes button[aria-pressed="true"] { background: #ed684d; }
+  .player {
+    background: var(--panel);
+    border-top: 3px dashed var(--accent);
+    backdrop-filter: none;
+  }
+  .play {
+    border-radius: 8px;
+    background: #ed684d;
+    box-shadow: 4px 4px 0 rgba(25, 30, 60, .25);
+  }
+  .queue, .settings-panel, .sleep-panel, .help, .more-dropdown {
+    border: 2px solid var(--accent);
+    border-radius: 6px;
+    box-shadow: 6px 6px 0 rgba(25, 30, 60, .2);
+    backdrop-filter: none;
+  }
+  .queue li { border-radius: 3px; }
+  .overlay { background: var(--bg); }
+  @media (max-width: 560px) {
+    header.top { padding: 12px 14px; }
+    .modes { border-radius: 5px; }
+  }
+  body {
+    background-color: #d6ff00;
+    background-image: repeating-linear-gradient(135deg, rgba(255, 0, 174, .08) 0 7px, transparent 7px 19px);
+    color: #28114f;
+  }
+  header.top {
+    background: linear-gradient(90deg, #ff39b8 0 31%, #00e9d1 31% 68%, #ffb000 68%);
+    border-bottom: 5px dotted #28114f;
+    padding: 9px 28px 17px 13px;
+  }
+  header.top > div:first-child span {
+    font-family: "Comic Sans MS", cursive;
+    font-size: 27px;
+    letter-spacing: 2px;
+    text-shadow: 3px 2px #00e9d1, -2px -1px #ff39b8;
+    transform: rotate(-3deg);
+  }
+  .stage::before {
+    opacity: .48;
+    background-image: linear-gradient(#ff39b8 1px, transparent 1px), linear-gradient(90deg, #00a7ff 1px, transparent 1px);
+    background-size: 23px 37px;
+  }
+  .drop {
+    background: #fff1a8;
+    border-color: #ff39b8;
+    border-style: dotted;
+    border-width: 5px 2px 7px 4px;
+    border-radius: 24px 3px 19px 2px;
+    box-shadow: 11px 9px 0 #00e9d1, -5px -4px 0 #ff39b8;
+    transform: translate(-50%, -50%) rotate(-1.5deg);
+  }
+  .drop.is-over { transform: translate(-50%, -50%) rotate(1deg) scale(1.02); }
+  .drop h1 {
+    color: #ed168f;
+    font-family: "Comic Sans MS", cursive;
+    letter-spacing: 1px;
+    text-shadow: 3px 3px #00e9d1, -1px -1px #ffb000;
+  }
+  .drop p { color: #392764; }
+  .btn-primary { background: #ff39b8; color: #241044; }
+  .btn-ghost { background: #00e9d1; }
+  .modes {
+    background: #ffb000;
+    border-color: #ff39b8;
+    border-width: 3px 1px 5px;
+    transform: rotate(1deg);
+  }
+  .modes button:nth-child(odd) { font-family: Georgia, serif; }
+  .modes button:nth-child(even) { font-family: "Comic Sans MS", cursive; }
+  .modes button[aria-pressed="true"] { background: #ff39b8; color: #241044; }
+  .player {
+    background: linear-gradient(110deg, #00e9d1, #ffb000 55%, #ff39b8);
+    border-top: 5px dotted #28114f;
+  }
+  .play { background: #8d36ff; color: #ffef00; border-radius: 3px 50% 8px 40%; }
+  .tool:nth-child(3n) { background: #ff39b8; }
+  .tool:nth-child(3n + 1) { background: #00e9d1; }
+  .queue, .settings-panel, .sleep-panel, .help, .more-dropdown {
+    background: #fff1a8;
+    border-color: #ff39b8;
+    border-style: dotted;
+    border-radius: 18px 3px 12px 5px;
+    box-shadow: 8px 7px 0 #00e9d1;
+  }
+  @media (max-width: 560px) {
+    header.top { padding: 8px 11px 14px; }
+    .drop { transform: translate(-50%, -50%) rotate(-1deg); }
+    .drop.is-over { transform: translate(-50%, -50%) rotate(1deg) scale(1.02); }
+  }
 </style>
 </head>
 <body>
